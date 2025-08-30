@@ -36,3 +36,16 @@ sudo npm install @circle-fin/developer-controlled-wallets --save
 sudo npm install node-forge -S
 
 BLVF0FSuVMTWpGbW0LQZINfHN66JN5r8NxshY8ZLkOSXzk1Dzh5bqo+rOtlnYgeClcUWpj2Y8g0EfVo4B3rsr/xeSGj+xsGtS9KflwFvTTDLZwarvj1h6D96fQSmadF9VVxtYyLq0G0Pqu38tnbMX5mlWtUZ/QbxB2UudF65FmksJpblt+jEE5qwtv6O20n37iYpEWvcglJfRfD801sqIjzW3LHlaxk8uAx4FrDQuO3x6hzZekld/yxtmF2WsyDuCGzA0Dat4QU8JJJcgWcYO+AzitmBDZdU1GcKLiRtCV9WWl5uYUietwFGbXy7ZQdsgQjYMS7q7ao+fgLxDw1WtgO7t/eX7GhuhCXXbqPtPUirMaai4Asiaa7h0t6bUAjcpAXCjWwl0FgK/zvq89MFzs4zvQzPabQkop6WQ2Vg2FYqh9eFjKAHyqDUuL6a5KOLgSUZ6qQ6uPGRrwAJxt0x4xPJW99hyKAb//nDs8RjpTY0u8ev/uSQMIyl1MPet258R5o3PZSc/nYJKIg3gyHkQ4UEsCERXt7eXXCiNI75Wj6fk/d5XMAbU0wZJrn87eVl11Bdk0xzHSkL318CMTgtofWAEwMTyOPOQoIHsja2S48zWXwrGJMxmOB/lP5VOVYzcKFCKPqJ+ju07/LUB9Uma/bXnZoTT8KZlE46sDhza7I=
+
+
+
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/taiwotherock/webchatbot.git
+git push -u origin main
+…or push an existing repository from the command line
+git remote add origin https://github.com/taiwotherock/webchatbot.git
+git branch -M main
+git push -u origin main

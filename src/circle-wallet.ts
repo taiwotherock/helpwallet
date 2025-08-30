@@ -184,7 +184,7 @@ export async function transferUSDC (sourceWalletId: string, beneficiaryWalletId:
         console.log("Sleeping for 5 seconds...");
         await sleep(5000);
 
-         var responset = await transferQueryUSDC (txId) 
+         var responset = await transferQueryUSDC (txId,'USDC') 
          if(responset != null && responset.success)
             return responset;
       }
@@ -205,7 +205,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function transferQueryUSDC (txId: string) {
+export async function transferQueryUSDC (txId: string, symbol:string) {
   
   const client = initiateDeveloperControlledWalletsClient({
   apiKey: process.env.CRC_API_KEY,
@@ -216,6 +216,7 @@ export async function transferQueryUSDC (txId: string) {
     id: txId,
   })
   console.log(response.data?.transaction)
+  console.log(response.data?.transaction.operation)
 
   if(response.data?.transaction.operation == 'TRANSFER')
   {
@@ -223,11 +224,13 @@ export async function transferQueryUSDC (txId: string) {
     var statux = response.data?.transaction.state.toString();
     if(statux == 'COMPLETE' || statux == 'CONFIRMED')
         statux = 'SUCCESS';
-  return {success:true,chain: response.data?.transaction.blockchain,
+        console.log('statusx ' + statux)
+    return {success:true,chain: response.data?.transaction.blockchain,
      txId: txId, fee:response.data?.transaction.networkFee,
       toAddress: response.data?.transaction.destinationAddress,
      fromAddress: response.data?.transaction.sourceAddress,
-     blockRefNo: response.data?.transaction.blockHash,
+     blockRefNo: response.data?.transaction.txHash,
+     symbol: symbol,
      amount: response.data?.transaction.amounts[0]!, blockNumber: response.data?.transaction.blockHeight,
      blockTimestamp: response.data?.transaction.firstConfirmDate,
      contractAddress: response.data?.transaction.walletId, crDr:'',status: statux };

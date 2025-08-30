@@ -138,7 +138,7 @@ app.post('/create-wallet', async (req, res) => {
       var response : any;
       if(symbol == 'USDC')
       {
-        response = transferQueryUSDC(req.params.txId)
+        response = await transferQueryUSDC(req.params.txId, symbol)
         res.json(response)
       }
       else {

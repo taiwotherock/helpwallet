@@ -90,7 +90,7 @@ export function getMySQLDateNow(): string {
 
   export async function insertTranData(externalRef: string ,txId: string, chain: string) {
   
-    console.log('token: ' + name);
+    //console.log('token: ' + name);
     
     let conn;
     try {

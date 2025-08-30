@@ -18,6 +18,7 @@ exports.fetchBalanceUSDC = fetchBalanceUSDC;
 exports.transferUSDC = transferUSDC;
 exports.transferQueryUSDC = transferQueryUSDC;
 const dotenv_1 = __importDefault(require("dotenv"));
+const save_wallet_1 = require("./save-wallet");
 const developer_controlled_wallets_1 = require("@circle-fin/developer-controlled-wallets");
 // This will print a new entity secret in the terminal
 //generateEntitySecret()
@@ -125,7 +126,7 @@ function fetchBalanceUSDC(walletId) {
         return { success: false, balance: 0, symbol: 'USDC', id: '' };
     });
 }
-function transferUSDC(sourceWalletId, beneficiaryWalletId, amount, sourceTokenId) {
+function transferUSDC(sourceWalletId, beneficiaryWalletId, amount, sourceTokenId, externalRef, chain) {
     return __awaiter(this, void 0, void 0, function* () {
         const client = (0, developer_controlled_wallets_1.initiateDeveloperControlledWalletsClient)({
             apiKey: process.env.CRC_API_KEY,
@@ -146,15 +147,16 @@ function transferUSDC(sourceWalletId, beneficiaryWalletId, amount, sourceTokenId
         console.log(response);
         const txId = response.data.id;
         //data: { id: '55b469eb-2c01-523d-8016-121cdee4dfd4', state: 'INITIATED' },
+        (0, save_wallet_1.insertTranData)(externalRef, txId, chain);
         var response2 = { success: true, responseCode: 'PP', responseMessage: '', txId: response.data.id, blockNumber: '',
             blockTimeStamp: '', status: response.data.state };
         for (let i = 0; i < 4; i++) {
             try {
                 console.log(`Iteration ${i + 1} started`);
                 if (i < 4) { // avoid sleeping after last iteration
-                    console.log("Sleeping for 10 seconds...");
-                    yield sleep(10000);
-                    var responset = yield transferQueryUSDC(txId);
+                    console.log("Sleeping for 5 seconds...");
+                    yield sleep(5000);
+                    var responset = yield transferQueryUSDC(txId, 'USDC');
                     if (responset != null && responset.success)
                         return responset;
                 }
@@ -169,9 +171,9 @@ function transferUSDC(sourceWalletId, beneficiaryWalletId, amount, sourceTokenId
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-function transferQueryUSDC(txId) {
+function transferQueryUSDC(txId, symbol) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
         const client = (0, developer_controlled_wallets_1.initiateDeveloperControlledWalletsClient)({
             apiKey: process.env.CRC_API_KEY,
             entitySecret: process.env.CRC_ENTITY_SECRET
@@ -180,19 +182,22 @@ function transferQueryUSDC(txId) {
             id: txId,
         });
         console.log((_a = response.data) === null || _a === void 0 ? void 0 : _a.transaction);
-        if (((_b = response.data) === null || _b === void 0 ? void 0 : _b.transaction.operation) == 'TRANSFER') {
+        console.log((_b = response.data) === null || _b === void 0 ? void 0 : _b.transaction.operation);
+        if (((_c = response.data) === null || _c === void 0 ? void 0 : _c.transaction.operation) == 'TRANSFER') {
             var status2 = '';
-            var statux = (_c = response.data) === null || _c === void 0 ? void 0 : _c.transaction.state.toString();
+            var statux = (_d = response.data) === null || _d === void 0 ? void 0 : _d.transaction.state.toString();
             if (statux == 'COMPLETE' || statux == 'CONFIRMED')
                 statux = 'SUCCESS';
-            return { success: true, chain: (_d = response.data) === null || _d === void 0 ? void 0 : _d.transaction.blockchain,
-                txId: txId, fee: (_e = response.data) === null || _e === void 0 ? void 0 : _e.transaction.networkFee,
-                toAddress: (_f = response.data) === null || _f === void 0 ? void 0 : _f.transaction.destinationAddress,
-                fromAddress: (_g = response.data) === null || _g === void 0 ? void 0 : _g.transaction.sourceAddress,
-                blockRefNo: (_h = response.data) === null || _h === void 0 ? void 0 : _h.transaction.blockHash,
-                amount: (_j = response.data) === null || _j === void 0 ? void 0 : _j.transaction.amounts[0], blockNumber: (_k = response.data) === null || _k === void 0 ? void 0 : _k.transaction.blockHeight,
-                blockTimestamp: (_l = response.data) === null || _l === void 0 ? void 0 : _l.transaction.firstConfirmDate,
-                contractAddress: (_m = response.data) === null || _m === void 0 ? void 0 : _m.transaction.walletId, crDr: '', status: statux };
+            console.log('statusx ' + statux);
+            return { success: true, chain: (_e = response.data) === null || _e === void 0 ? void 0 : _e.transaction.blockchain,
+                txId: txId, fee: (_f = response.data) === null || _f === void 0 ? void 0 : _f.transaction.networkFee,
+                toAddress: (_g = response.data) === null || _g === void 0 ? void 0 : _g.transaction.destinationAddress,
+                fromAddress: (_h = response.data) === null || _h === void 0 ? void 0 : _h.transaction.sourceAddress,
+                blockRefNo: (_j = response.data) === null || _j === void 0 ? void 0 : _j.transaction.txHash,
+                symbol: symbol,
+                amount: (_k = response.data) === null || _k === void 0 ? void 0 : _k.transaction.amounts[0], blockNumber: (_l = response.data) === null || _l === void 0 ? void 0 : _l.transaction.blockHeight,
+                blockTimestamp: (_m = response.data) === null || _m === void 0 ? void 0 : _m.transaction.firstConfirmDate,
+                contractAddress: (_o = response.data) === null || _o === void 0 ? void 0 : _o.transaction.walletId, crDr: '', status: statux };
         }
         return null;
     });

@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.insertData = insertData;
 exports.fetchWalletKey = fetchWalletKey;
 exports.getMySQLDateNow = getMySQLDateNow;
+exports.insertTranData = insertTranData;
 const db_1 = require("./db");
 // Async function to insert data
 function insertData(code, name, chain, publicAddr, privateKey, phrase, username, entityCode) {
@@ -77,6 +78,31 @@ function getMySQLDateNow() {
     const minutes = `${now.getMinutes()}`.padStart(2, '0');
     const seconds = `${now.getSeconds()}`.padStart(2, '0');
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+function insertTranData(externalRef, txId, chain) {
+    return __awaiter(this, void 0, void 0, function* () {
+        //console.log('token: ' + name);
+        let conn;
+        try {
+            conn = yield db_1.pool.getConnection();
+            const insertQuery = `
+      INSERT INTO mmc_chain_tx (external_ref,tx_id,chain)
+        VALUES (?, ?, ?)
+      `;
+            //const id = symbol + close_date;
+            const values = [externalRef, txId, chain]; // Replace with your actual data
+            //const [resultx] = await pool.execute(insertQuery, values);
+            const [resultx] = yield conn.execute(insertQuery, values);
+            console.log('tx inserted:', resultx);
+        }
+        catch (err) {
+            console.error('Error inserting data:', err);
+        }
+        finally {
+            if (conn)
+                conn.release();
+        }
+    });
 }
 //insertData();
 //# sourceMappingURL=save-wallet.js.map

@@ -120,7 +120,7 @@ app.get('/fetch-transaction-status/:txId', (req, res) => __awaiter(void 0, void 
         const symbol = req.query.symbol;
         var response;
         if (symbol == 'USDC') {
-            response = (0, circle_wallet_1.transferQueryUSDC)(req.params.txId);
+            response = yield (0, circle_wallet_1.transferQueryUSDC)(req.params.txId, symbol);
             res.json(response);
         }
         else {
@@ -145,11 +145,11 @@ app.post('/transfer', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         const xClientSecret = process.env.X_CLIENT_SECRET;
         const xSourceCode = process.env.X_SOURCE_CODE;
         console.log('source code ' + xSourceCode + ' ' + xClientId);
-        const { receiverAddress, contractAddress, amount, senderAddress, chain, symbol } = req.body;
+        const { receiverAddress, contractAddress, amount, senderAddress, chain, symbol, externalRef } = req.body;
         console.log("transfer req: " + receiverAddress + " " + amount);
         var response;
         if (symbol == 'USDC') {
-            response = yield (0, circle_wallet_1.transferUSDC)(senderAddress, receiverAddress, amount, contractAddress);
+            response = yield (0, circle_wallet_1.transferUSDC)(senderAddress, receiverAddress, amount, contractAddress, externalRef, chain);
             res.json(response);
         }
         else {
