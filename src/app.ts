@@ -5,6 +5,7 @@ import { createWalletWithPhrase, fetchBalance } from './tron-wallet'
 import { fetchContractBalance,fetchTransactionsByWallet } from './tron-contract-service'
 import { transfer } from './tron-transfer'
 import { approveBuyer } from './bpay-escrow-client'
+import { createWallet,fetchBalanceUSDC,transferQueryUSDC,transferUSDC } from './circle-wallet'
 
 
 
@@ -39,14 +40,24 @@ app.post('/create-wallet', async (req, res) => {
       const xSourceCode = process.env.X_SOURCE_CODE;
   
       console.log('source code ' + xSourceCode + ' ' + xClientId)
-      
-      const response = await createWalletWithPhrase(req.query.username,req.query.entityCode,req.query.name);
-  
-      res.json(response)
+      const chain = req.query.chain
+      const symbol = req.query.symbol
+      var response : any;
+      if(symbol == 'USDC')
+      {
+        response = await createWallet(req.query.name,'',chain); 
+        res.json(response) 
+       
+      }
+      else {
+        response = await createWalletWithPhrase(req.query.username,req.query.entityCode,req.query.name);
+        res.json(response)
+      }
     
       //res.json(successResponse(response))
     } catch (error) {
       console.log(`Error creating wallet `)
+      console.log(error)
       res.status(500).json({success:false,error:'error creating wallet ' + error})
     }
   })
@@ -54,25 +65,30 @@ app.post('/create-wallet', async (req, res) => {
   app.get('/balance/:address', async (req, res) => {
     try {
   
-      const authHeader = req.headers['authorization']; // lowercase key
-      const sourceCode = req.headers['x-source-code'];
-      const clientId = req.headers['x-client-id'];
-      const clientSecret = req.headers['x-client-secret'];
+      if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+        return;
+      }
+
+      const symbol = req.query.symbol
+      console.log('bal ' + symbol + ' ' + req.params.address)
+      var response : any;
+      if(symbol == 'USDC')
+      {
+         response = await fetchBalanceUSDC(req.params.address);
+         res.json(response)
+      }
+      else {
+          response = await fetchBalance(req.params.address);
+          res.json(response)
+      }
   
-      console.log('header ' + sourceCode + ' ' + clientId)
-      const xClientId = process.env.X_CLIENT_ID
-      const xClientSecret = process.env.X_CLIENT_SECRET;
-      const xSourceCode = process.env.X_SOURCE_CODE;
-  
-      console.log('source code ' + xSourceCode + ' ' + xClientId)
-      
-      const response = await fetchBalance(req.params.address);
-  
-      res.json(response)
-    
       //res.json(successResponse(response))
     } catch (error) {
       console.log(`Error fetch balance `)
+      console.log(error)
       res.status(500).json({success:false,error:'error fetch balance ' + error})
     }
   })
@@ -80,18 +96,12 @@ app.post('/create-wallet', async (req, res) => {
   app.get('/contract-balance/:address', async (req, res) => {
     try {
   
-      const authHeader = req.headers['authorization']; // lowercase key
-      const sourceCode = req.headers['x-source-code'];
-      const clientId = req.headers['x-client-id'];
-      const clientSecret = req.headers['x-client-secret'];
-  
-      console.log('header ' + sourceCode + ' ' + clientId)
-      const xClientId = process.env.X_CLIENT_ID
-      const xClientSecret = process.env.X_CLIENT_SECRET;
-      const xSourceCode = process.env.X_SOURCE_CODE;
-  
-      console.log('source code ' + xSourceCode + ' ' + xClientId)
-      console.log('source code ' + xSourceCode + ' ' + xClientId)
+      if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+        return;
+      }
       
       const response = await fetchContractBalance(req.params.address,req.query.contractAddress);
   
@@ -107,22 +117,34 @@ app.post('/create-wallet', async (req, res) => {
   app.get('/fetch-transaction-by-wallet/:address', async (req, res) => {
     try {
   
-      const authHeader = req.headers['authorization']; // lowercase key
-      const sourceCode = req.headers['x-source-code'];
-      const clientId = req.headers['x-client-id'];
-      const clientSecret = req.headers['x-client-secret'];
-  
-      console.log('header ' + sourceCode + ' ' + clientId)
-      const xClientId = process.env.X_CLIENT_ID
-      const xClientSecret = process.env.X_CLIENT_SECRET;
-      const xSourceCode = process.env.X_SOURCE_CODE;
-  
-      console.log('source code ' + xSourceCode + ' ' + xClientId)
-      console.log('source code ' + xSourceCode + ' ' + xClientId)
+      
       
       const response = await fetchTransactionsByWallet(req.params.address);
   
       res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error fetching transactions `)
+      res.status(500).json({success:false,error:'error fetching transactions ' + error})
+    }
+  })
+
+  app.get('/fetch-transaction-status/:txId', async (req, res) => {
+    try {
+  
+      
+      const symbol = req.query.symbol
+      var response : any;
+      if(symbol == 'USDC')
+      {
+        response = transferQueryUSDC(req.params.txId)
+        res.json(response)
+      }
+      else {
+        response = await fetchTransactionsByWallet(req.params.txId);
+        res.json(response)
+      }
     
       //res.json(successResponse(response))
     } catch (error) {
@@ -146,12 +168,21 @@ app.post('/create-wallet', async (req, res) => {
   
       console.log('source code ' + xSourceCode + ' ' + xClientId)
 
-      const { receiverAddress,contractAddress,amount, senderAddress,chain,symbol} = req.body;
+      const { receiverAddress,contractAddress,amount, senderAddress,chain,symbol,externalRef} = req.body;
       console.log("transfer req: " + receiverAddress + " " + amount);
+      var response: any;
       
-      const response = await transfer(receiverAddress,contractAddress,amount,senderAddress,chain,symbol);
+      if(symbol == 'USDC')
+      {
+        response = await transferUSDC(senderAddress, receiverAddress,amount,contractAddress,externalRef,chain);
+        res.json(response)
 
-      res.json(response)
+      }
+      else 
+      {
+        response = await transfer(receiverAddress,contractAddress,amount,senderAddress,chain,symbol);
+        res.json(response)
+      }
     
       //res.json(successResponse(response))
     } catch (error) {
@@ -188,6 +219,25 @@ app.post('/create-wallet', async (req, res) => {
       res.status(500).json({success:false,error:'error creating wallet ' + error})
     }
   })
+
+  function validateToken(req: any)
+  {
+    const authHeader = req.headers['authorization']; // lowercase key
+    const sourceCode = req.headers['x-source-code'];
+    const clientId = req.headers['x-client-id'];
+    const clientSecret = req.headers['x-client-secret'];
+
+    console.log('header ' + sourceCode + ' ' + clientId)
+    const xClientId = process.env.X_CLIENT_ID
+    const xClientSecret = process.env.X_CLIENT_SECRET;
+    const xSourceCode = process.env.X_SOURCE_CODE;
+
+    console.log('source code ' + xSourceCode + ' ' + xClientId)
+    console.log('source code ' + xSourceCode + ' ' + xClientId)
+
+    return true;
+
+  }
 
 
 

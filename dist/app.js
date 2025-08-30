@@ -18,6 +18,7 @@ const tron_wallet_1 = require("./tron-wallet");
 const tron_contract_service_1 = require("./tron-contract-service");
 const tron_transfer_1 = require("./tron-transfer");
 const bpay_escrow_client_1 = require("./bpay-escrow-client");
+const circle_wallet_1 = require("./circle-wallet");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -42,47 +43,58 @@ app.post('/create-wallet', (req, res) => __awaiter(void 0, void 0, void 0, funct
         const xClientSecret = process.env.X_CLIENT_SECRET;
         const xSourceCode = process.env.X_SOURCE_CODE;
         console.log('source code ' + xSourceCode + ' ' + xClientId);
-        const response = yield (0, tron_wallet_1.createWalletWithPhrase)(req.query.username, req.query.entityCode, req.query.name);
-        res.json(response);
+        const chain = req.query.chain;
+        const symbol = req.query.symbol;
+        var response;
+        if (symbol == 'USDC') {
+            response = yield (0, circle_wallet_1.createWallet)(req.query.name, '', chain);
+            res.json(response);
+        }
+        else {
+            response = yield (0, tron_wallet_1.createWalletWithPhrase)(req.query.username, req.query.entityCode, req.query.name);
+            res.json(response);
+        }
         //res.json(successResponse(response))
     }
     catch (error) {
         console.log(`Error creating wallet `);
+        console.log(error);
         res.status(500).json({ success: false, error: 'error creating wallet ' + error });
     }
 }));
 app.get('/balance/:address', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const authHeader = req.headers['authorization']; // lowercase key
-        const sourceCode = req.headers['x-source-code'];
-        const clientId = req.headers['x-client-id'];
-        const clientSecret = req.headers['x-client-secret'];
-        console.log('header ' + sourceCode + ' ' + clientId);
-        const xClientId = process.env.X_CLIENT_ID;
-        const xClientSecret = process.env.X_CLIENT_SECRET;
-        const xSourceCode = process.env.X_SOURCE_CODE;
-        console.log('source code ' + xSourceCode + ' ' + xClientId);
-        const response = yield (0, tron_wallet_1.fetchBalance)(req.params.address);
-        res.json(response);
+        if (!validateToken(req)) {
+            console.log(`Invalid authentication API key or token `);
+            res.status(500).json({ success: false, error: 'Invalid authentication API key or token ' });
+            return;
+        }
+        const symbol = req.query.symbol;
+        console.log('bal ' + symbol + ' ' + req.params.address);
+        var response;
+        if (symbol == 'USDC') {
+            response = yield (0, circle_wallet_1.fetchBalanceUSDC)(req.params.address);
+            res.json(response);
+        }
+        else {
+            response = yield (0, tron_wallet_1.fetchBalance)(req.params.address);
+            res.json(response);
+        }
         //res.json(successResponse(response))
     }
     catch (error) {
         console.log(`Error fetch balance `);
+        console.log(error);
         res.status(500).json({ success: false, error: 'error fetch balance ' + error });
     }
 }));
 app.get('/contract-balance/:address', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const authHeader = req.headers['authorization']; // lowercase key
-        const sourceCode = req.headers['x-source-code'];
-        const clientId = req.headers['x-client-id'];
-        const clientSecret = req.headers['x-client-secret'];
-        console.log('header ' + sourceCode + ' ' + clientId);
-        const xClientId = process.env.X_CLIENT_ID;
-        const xClientSecret = process.env.X_CLIENT_SECRET;
-        const xSourceCode = process.env.X_SOURCE_CODE;
-        console.log('source code ' + xSourceCode + ' ' + xClientId);
-        console.log('source code ' + xSourceCode + ' ' + xClientId);
+        if (!validateToken(req)) {
+            console.log(`Invalid authentication API key or token `);
+            res.status(500).json({ success: false, error: 'Invalid authentication API key or token ' });
+            return;
+        }
         const response = yield (0, tron_contract_service_1.fetchContractBalance)(req.params.address, req.query.contractAddress);
         res.json(response);
         //res.json(successResponse(response))
@@ -94,18 +106,27 @@ app.get('/contract-balance/:address', (req, res) => __awaiter(void 0, void 0, vo
 }));
 app.get('/fetch-transaction-by-wallet/:address', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const authHeader = req.headers['authorization']; // lowercase key
-        const sourceCode = req.headers['x-source-code'];
-        const clientId = req.headers['x-client-id'];
-        const clientSecret = req.headers['x-client-secret'];
-        console.log('header ' + sourceCode + ' ' + clientId);
-        const xClientId = process.env.X_CLIENT_ID;
-        const xClientSecret = process.env.X_CLIENT_SECRET;
-        const xSourceCode = process.env.X_SOURCE_CODE;
-        console.log('source code ' + xSourceCode + ' ' + xClientId);
-        console.log('source code ' + xSourceCode + ' ' + xClientId);
         const response = yield (0, tron_contract_service_1.fetchTransactionsByWallet)(req.params.address);
         res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error fetching transactions `);
+        res.status(500).json({ success: false, error: 'error fetching transactions ' + error });
+    }
+}));
+app.get('/fetch-transaction-status/:txId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const symbol = req.query.symbol;
+        var response;
+        if (symbol == 'USDC') {
+            response = (0, circle_wallet_1.transferQueryUSDC)(req.params.txId);
+            res.json(response);
+        }
+        else {
+            response = yield (0, tron_contract_service_1.fetchTransactionsByWallet)(req.params.txId);
+            res.json(response);
+        }
         //res.json(successResponse(response))
     }
     catch (error) {
@@ -126,8 +147,15 @@ app.post('/transfer', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         console.log('source code ' + xSourceCode + ' ' + xClientId);
         const { receiverAddress, contractAddress, amount, senderAddress, chain, symbol } = req.body;
         console.log("transfer req: " + receiverAddress + " " + amount);
-        const response = yield (0, tron_transfer_1.transfer)(receiverAddress, contractAddress, amount, senderAddress, chain, symbol);
-        res.json(response);
+        var response;
+        if (symbol == 'USDC') {
+            response = yield (0, circle_wallet_1.transferUSDC)(senderAddress, receiverAddress, amount, contractAddress);
+            res.json(response);
+        }
+        else {
+            response = yield (0, tron_transfer_1.transfer)(receiverAddress, contractAddress, amount, senderAddress, chain, symbol);
+            res.json(response);
+        }
         //res.json(successResponse(response))
     }
     catch (error) {
@@ -157,4 +185,17 @@ app.post('/approve-buyer', (req, res) => __awaiter(void 0, void 0, void 0, funct
         res.status(500).json({ success: false, error: 'error creating wallet ' + error });
     }
 }));
+function validateToken(req) {
+    const authHeader = req.headers['authorization']; // lowercase key
+    const sourceCode = req.headers['x-source-code'];
+    const clientId = req.headers['x-client-id'];
+    const clientSecret = req.headers['x-client-secret'];
+    console.log('header ' + sourceCode + ' ' + clientId);
+    const xClientId = process.env.X_CLIENT_ID;
+    const xClientSecret = process.env.X_CLIENT_SECRET;
+    const xSourceCode = process.env.X_SOURCE_CODE;
+    console.log('source code ' + xSourceCode + ' ' + xClientId);
+    console.log('source code ' + xSourceCode + ' ' + xClientId);
+    return true;
+}
 //# sourceMappingURL=app.js.map

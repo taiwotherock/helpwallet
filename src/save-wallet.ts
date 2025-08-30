@@ -87,4 +87,33 @@ export function getMySQLDateNow(): string {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
 
+
+  export async function insertTranData(externalRef: string ,txId: string, chain: string) {
+  
+    console.log('token: ' + name);
+    
+    let conn;
+    try {
+  
+      conn = await pool.getConnection();
+      const insertQuery = `
+      INSERT INTO mmc_chain_tx (external_ref,tx_id,chain)
+        VALUES (?, ?, ?)
+      `;
+  
+      //const id = symbol + close_date;
+      const values = [externalRef,txId,chain] // Replace with your actual data
+  
+      //const [resultx] = await pool.execute(insertQuery, values);
+      const [resultx] = await conn.execute(insertQuery, values);
+    console.log('tx inserted:', resultx);
+  
+    } catch (err) {
+      console.error('Error inserting data:', err);
+    } finally {
+      if (conn) conn.release();
+      
+    }
+  }
+
 //insertData();

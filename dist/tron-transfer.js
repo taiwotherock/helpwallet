@@ -34,7 +34,7 @@ function transfer(receiverAddress, contractAddress, amount, senderAddress, chain
         console.log('result code ' + result.code);
         // const key = '9ca418335b389449499e2b83aff09210050aa70140977c996d21d4f16fd0f9b1'; // Use a secure key
         //const dataToEncrypt = 'Sensitive Information';
-        var response = { success: result, responseCode: 'PPP', responseMessage: '', txId: '', blockNumber: '',
+        var response = { success: true, responsedata: result, responseCode: 'PP', responseMessage: '', txId: '', blockNumber: '',
             blockTimeStamp: '' };
         return response;
     });
