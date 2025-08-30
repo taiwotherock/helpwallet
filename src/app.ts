@@ -6,6 +6,8 @@ import { fetchContractBalance,fetchTransactionsByWallet } from './tron-contract-
 import { transfer } from './tron-transfer'
 import { approveBuyer } from './bpay-escrow-client'
 import { createWallet,fetchBalanceUSDC,transferQueryUSDC,transferUSDC } from './circle-wallet'
+import { createWalletWithPhraseEth } from './eth-wallet'
+import { fetchBalanceEth } from './eth-balance'
 
 
 
@@ -49,8 +51,13 @@ app.post('/create-wallet', async (req, res) => {
         res.json(response) 
        
       }
-      else {
+      else if(chain == 'TRON') {
         response = await createWalletWithPhrase(req.query.username,req.query.entityCode,req.query.name);
+        res.json(response)
+      }
+      else
+      {
+        response = await createWalletWithPhraseEth(chain,symbol);
         res.json(response)
       }
     
@@ -73,6 +80,8 @@ app.post('/create-wallet', async (req, res) => {
       }
 
       const symbol = req.query.symbol
+      const chain = req.query.chain
+      const rpcUrl = req.query.rpcUrl
       console.log('bal ' + symbol + ' ' + req.params.address)
       var response : any;
       if(symbol == 'USDC')
@@ -80,10 +89,14 @@ app.post('/create-wallet', async (req, res) => {
          response = await fetchBalanceUSDC(req.params.address);
          res.json(response)
       }
-      else {
+      else if(chain == 'TRON') {
           response = await fetchBalance(req.params.address);
           res.json(response)
       }
+      else  {
+        response = await fetchBalanceEth(req.params.address,rpcUrl);
+        res.json(response)
+    }
   
       //res.json(successResponse(response))
     } catch (error) {

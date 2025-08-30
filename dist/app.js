@@ -19,6 +19,8 @@ const tron_contract_service_1 = require("./tron-contract-service");
 const tron_transfer_1 = require("./tron-transfer");
 const bpay_escrow_client_1 = require("./bpay-escrow-client");
 const circle_wallet_1 = require("./circle-wallet");
+const eth_wallet_1 = require("./eth-wallet");
+const eth_balance_1 = require("./eth-balance");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -50,8 +52,12 @@ app.post('/create-wallet', (req, res) => __awaiter(void 0, void 0, void 0, funct
             response = yield (0, circle_wallet_1.createWallet)(req.query.name, '', chain);
             res.json(response);
         }
-        else {
+        else if (chain == 'TRON') {
             response = yield (0, tron_wallet_1.createWalletWithPhrase)(req.query.username, req.query.entityCode, req.query.name);
+            res.json(response);
+        }
+        else {
+            response = yield (0, eth_wallet_1.createWalletWithPhraseEth)(chain, symbol);
             res.json(response);
         }
         //res.json(successResponse(response))
@@ -70,14 +76,20 @@ app.get('/balance/:address', (req, res) => __awaiter(void 0, void 0, void 0, fun
             return;
         }
         const symbol = req.query.symbol;
+        const chain = req.query.chain;
+        const rpcUrl = req.query.rpcUrl;
         console.log('bal ' + symbol + ' ' + req.params.address);
         var response;
         if (symbol == 'USDC') {
             response = yield (0, circle_wallet_1.fetchBalanceUSDC)(req.params.address);
             res.json(response);
         }
-        else {
+        else if (chain == 'TRON') {
             response = yield (0, tron_wallet_1.fetchBalance)(req.params.address);
+            res.json(response);
+        }
+        else {
+            response = yield (0, eth_balance_1.fetchBalanceEth)(req.params.address, rpcUrl);
             res.json(response);
         }
         //res.json(successResponse(response))

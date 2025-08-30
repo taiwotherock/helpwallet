@@ -1,5 +1,6 @@
 sudo npm init -y
 sudo npm install tronweb 
+sudo npm install ethers
 
 https://tronweb.network/docu/docs/quickstart/
 
