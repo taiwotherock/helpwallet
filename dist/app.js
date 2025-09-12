@@ -84,7 +84,7 @@ app.get('/balance/:address', (req, res) => __awaiter(void 0, void 0, void 0, fun
             response = yield (0, circle_wallet_1.fetchBalanceUSDC)(req.params.address);
             res.json(response);
         }
-        else if (chain == 'TRON') {
+        else if (chain == 'TRON' || symbol == 'TRX' || symbol == 'USDT') {
             response = yield (0, tron_wallet_1.fetchBalance)(req.params.address);
             res.json(response);
         }
@@ -92,6 +92,26 @@ app.get('/balance/:address', (req, res) => __awaiter(void 0, void 0, void 0, fun
             response = yield (0, eth_balance_1.fetchBalanceEth)(req.params.address, rpcUrl);
             res.json(response);
         }
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error fetch balance `);
+        console.log(error);
+        res.status(500).json({ success: false, error: 'error fetch balance ' + error });
+    }
+}));
+app.post('/token-balance', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!validateToken(req)) {
+            console.log(`Invalid authentication API key or token `);
+            res.status(500).json({ success: false, error: 'Invalid authentication API key or token ' });
+            return;
+        }
+        const { walletAddress, tokenAddress, rpcUrl, decimalNo } = req.body;
+        console.log('bal ' + walletAddress + ' ' + tokenAddress);
+        var response;
+        response = yield (0, eth_balance_1.fetchTokenBalance)(tokenAddress, walletAddress, rpcUrl, decimalNo);
+        res.json(response);
         //res.json(successResponse(response))
     }
     catch (error) {
@@ -127,16 +147,22 @@ app.get('/fetch-transaction-by-wallet/:address', (req, res) => __awaiter(void 0,
         res.status(500).json({ success: false, error: 'error fetching transactions ' + error });
     }
 }));
-app.get('/fetch-transaction-status/:txId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post('/fetch-transaction-status/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const symbol = req.query.symbol;
+        const { chain, symbol, txId, rpcUrl } = req.body;
         var response;
-        if (symbol == 'USDC') {
-            response = yield (0, circle_wallet_1.transferQueryUSDC)(req.params.txId, symbol);
+        console.log('fetch status ' + symbol + ' ' + txId);
+        if (chain == 'TRON') {
+            response = yield (0, tron_contract_service_1.fetchTransactionsByWallet)(txId);
+            res.json(response);
+        }
+        else if (symbol == 'USDC' && txId.indexOf('0x') < 0) {
+            response = yield (0, circle_wallet_1.transferQueryUSDC)(txId, symbol);
+            console.log(response);
             res.json(response);
         }
         else {
-            response = yield (0, tron_contract_service_1.fetchTransactionsByWallet)(req.params.txId);
+            response = yield (0, eth_balance_1.fetchTransactionDetailEth)(txId, symbol, chain, rpcUrl);
             res.json(response);
         }
         //res.json(successResponse(response))

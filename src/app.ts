@@ -7,7 +7,7 @@ import { transfer } from './tron-transfer'
 import { approveBuyer } from './bpay-escrow-client'
 import { createWallet,fetchBalanceUSDC,transferQueryUSDC,transferUSDC } from './circle-wallet'
 import { createWalletWithPhraseEth } from './eth-wallet'
-import { fetchBalanceEth } from './eth-balance'
+import { fetchTokenBalance,fetchBalanceEth,fetchTransactionDetailEth } from './eth-balance'
 
 
 
@@ -89,14 +89,43 @@ app.post('/create-wallet', async (req, res) => {
          response = await fetchBalanceUSDC(req.params.address);
          res.json(response)
       }
-      else if(chain == 'TRON') {
+      else if(chain == 'TRON' || symbol == 'TRX' || symbol == 'USDT') {
           response = await fetchBalance(req.params.address);
           res.json(response)
       }
       else  {
-        response = await fetchBalanceEth(req.params.address,rpcUrl);
-        res.json(response)
+
+          response = await fetchBalanceEth(req.params.address,rpcUrl);
+          res.json(response)
     }
+  
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error fetch balance `)
+      console.log(error)
+      res.status(500).json({success:false,error:'error fetch balance ' + error})
+    }
+  })
+
+  app.post('/token-balance', async (req, res) => {
+    try {
+  
+      if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+        return;
+      }
+
+      const { walletAddress,tokenAddress,rpcUrl,decimalNo} = req.body;
+      
+      console.log('bal ' + walletAddress + ' ' + tokenAddress)
+      var response : any;
+      
+
+          response = await fetchTokenBalance(tokenAddress, walletAddress,rpcUrl,decimalNo);
+          res.json(response)
+    
   
       //res.json(successResponse(response))
     } catch (error) {
@@ -143,22 +172,31 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
-  app.get('/fetch-transaction-status/:txId', async (req, res) => {
+  app.post('/fetch-transaction-status/', async (req, res) => {
     try {
-  
-      
-      const symbol = req.query.symbol
+
+   
+      const { chain,symbol,txId,rpcUrl} = req.body;
       var response : any;
-      if(symbol == 'USDC')
+      console.log('fetch status ' + symbol + ' ' + txId )
+      if(chain == 'TRON') {
+        response = await fetchTransactionsByWallet(txId);
+        res.json(response)
+      }
+      else if(symbol == 'USDC' && txId.indexOf('0x') < 0)
       {
-        response = await transferQueryUSDC(req.params.txId, symbol)
-        res.json(response)
+         response = await transferQueryUSDC(txId,symbol)
+         console.log(response)
+
+         res.json(response)
       }
-      else {
-        response = await fetchTransactionsByWallet(req.params.txId);
-        res.json(response)
+      else 
+      {
+        console.log('eth api route ') 
+        response = await fetchTransactionDetailEth(txId, symbol, chain, rpcUrl);
+         res.json(response)
       }
-    
+
       //res.json(successResponse(response))
     } catch (error) {
       console.log(`Error fetching transactions `)

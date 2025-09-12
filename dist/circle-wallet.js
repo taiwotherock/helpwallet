@@ -146,9 +146,10 @@ function transferUSDC(sourceWalletId, beneficiaryWalletId, amount, sourceTokenId
         });
         console.log(response);
         const txId = response.data.id;
+        console.log('txtId ' + txId);
         //data: { id: '55b469eb-2c01-523d-8016-121cdee4dfd4', state: 'INITIATED' },
         (0, save_wallet_1.insertTranData)(externalRef, txId, chain);
-        var response2 = { success: true, responseCode: 'PP', responseMessage: '', txId: response.data.id, blockNumber: '',
+        var response2 = { success: true, responseCode: 'PP', responseMessage: '', txId: txId, blockNumber: '',
             blockTimeStamp: '', status: response.data.state };
         for (let i = 0; i < 4; i++) {
             try {
@@ -178,6 +179,7 @@ function transferQueryUSDC(txId, symbol) {
             apiKey: process.env.CRC_API_KEY,
             entitySecret: process.env.CRC_ENTITY_SECRET
         });
+        console.log('txt query status ' + txId);
         const response = yield client.getTransaction({
             id: txId,
         });
@@ -208,4 +210,5 @@ function transferQueryUSDC(txId, symbol) {
 ////fetchBalance('b79f7bf5-fbc8-5f88-ab6b-aa6cd41d56c7')
 //transfer('ebe05c72-2884-5c68-85e2-bd61aada7a80','0xee8306a02e59b4527dc3fda555c5e40d61b29a73',0.1,'bdf128b4-827b-5267-8f9e-243694989b5f');
 //console.log(transferQuery('55b469eb-2c01-523d-8016-121cdee4dfd4'))
+0x3fece74e9fc392c3b6e2b0528c01f4f8c89028b1f5543121e2609ab3a4ae1e94;
 //# sourceMappingURL=circle-wallet.js.map
