@@ -65,6 +65,7 @@ function createWalletWithPhrase(username, entityCode, name) {
         //account.address.base58,encryptedData, account.publicKey,username,entityCode)
         var response = { success: true, address: account.address.base58, privateKey: account.privateKey,
             chain: 'TRON', phrase: account.publicKey };
+        console.log(response);
         return response;
     });
 }

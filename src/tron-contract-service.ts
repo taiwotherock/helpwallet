@@ -82,7 +82,8 @@ export async function fetchContractBalance(address: string,contractAddress: stri
 
   //https://nile.trongrid.io/v1/accounts/TLQZunpWvD8EQKEEwLQuPF1cteKknHvXGi/transactions/trc20
 
-    const responsed = await fetch('https://api.trongrid.io/v1/accounts/' + address + '/transactions/trc20');
+  //https://api.trongrid.io/v1/accounts
+    const responsed = await fetch('https://api.nileex.io/v1/accounts/' + address + '/transactions/trc20');
      const data = await responsed.json();
     
     console.log('response ' + responsed.ok)

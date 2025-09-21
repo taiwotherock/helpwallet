@@ -45,7 +45,8 @@ function fetchContractBalance(address, contractAddress) {
 function fetchTransactionsByWallet(address) {
     return __awaiter(this, void 0, void 0, function* () {
         //https://nile.trongrid.io/v1/accounts/TLQZunpWvD8EQKEEwLQuPF1cteKknHvXGi/transactions/trc20
-        const responsed = yield fetch('https://api.trongrid.io/v1/accounts/' + address + '/transactions/trc20');
+        //https://api.trongrid.io/v1/accounts
+        const responsed = yield fetch('https://api.nileex.io/v1/accounts/' + address + '/transactions/trc20');
         const data = yield responsed.json();
         console.log('response ' + responsed.ok);
         console.log('response ' + JSON.stringify(data));

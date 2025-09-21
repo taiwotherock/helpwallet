@@ -29,6 +29,8 @@ export async function createWalletWithPhrase(username: string, entityCode: strin
 
       var response = {success:true,address: account.address.base58, privateKey: account.privateKey,
          chain: 'TRON', phrase:account.publicKey };
+
+         console.log(response)
          
     
     return response;

@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.transfer = transfer;
+exports.transactionTsq = transactionTsq;
 const dotenv_1 = __importDefault(require("dotenv"));
 const tron_init_1 = require("./tron-init");
 dotenv_1.default.config();
@@ -37,6 +38,33 @@ function transfer(receiverAddress, contractAddress, amount, senderAddress, chain
         var response = { success: true, responsedata: result, responseCode: 'PP', responseMessage: '', txId: '', blockNumber: '',
             blockTimeStamp: '' };
         return response;
+    });
+}
+function transactionTsq(walletAddress, rpcUrl) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let rpcUrl2 = "https://nile.trongrid.io";
+        let queryParams = "/v1/accounts/" + walletAddress + "/transactions?limit=10";
+        const headers = {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+        };
+        if (this.apiKey) {
+            headers['TRON-PRO-API-KEY'] = this.apiKey;
+        }
+        // Make the API request
+        const response = yield fetch(rpcUrl2 + queryParams, {
+            method: 'GET',
+            headers,
+        });
+        console.log(response);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}, message: ${response.statusText}`);
+        }
+        const data = yield response.json();
+        if (!data.success) {
+            throw new Error('API request was not successful');
+        }
+        return data;
     });
 }
 //# sourceMappingURL=tron-transfer.js.map

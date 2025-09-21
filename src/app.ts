@@ -4,10 +4,16 @@ import dotenv from 'dotenv';
 import { createWalletWithPhrase, fetchBalance } from './tron-wallet'
 import { fetchContractBalance,fetchTransactionsByWallet } from './tron-contract-service'
 import { transfer } from './tron-transfer'
+import { freezeTRX,getTronResources,unfreezeTRX } from './tron-freeze'
 import { approveBuyer } from './bpay-escrow-client'
 import { createWallet,fetchBalanceUSDC,transferQueryUSDC,transferUSDC } from './circle-wallet'
 import { createWalletWithPhraseEth } from './eth-wallet'
 import { fetchTokenBalance,fetchBalanceEth,fetchTransactionDetailEth } from './eth-balance'
+import { scanCurrentBlock} from './tron-scan-block'
+import { depositIntoPool,getUserDepositFromPool} from './tron-bfp-liquiditypool'
+import { listenDeposited} from './tron-event-listeners'
+import { tronswap} from './tron-swap'
+import { issueNftCreditScore} from './tron-bcs-nft'
 
 
 
@@ -25,6 +31,7 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
+  //listenDeposited().catch(console.error);
   return console.log(`Express is listening at http://localhost:${PORT}`);
 });
 
@@ -176,11 +183,12 @@ app.post('/create-wallet', async (req, res) => {
     try {
 
    
-      const { chain,symbol,txId,rpcUrl} = req.body;
+      const { chain,symbol,txId,rpcUrl, timeAllow} = req.body;
       var response : any;
       console.log('fetch status ' + symbol + ' ' + txId )
       if(chain == 'TRON') {
-        response = await fetchTransactionsByWallet(txId);
+        //response = await fetchTransactionsByWallet(txId);
+        response = await listenDeposited(txId,symbol,timeAllow)
         res.json(response)
       }
       else if(symbol == 'USDC' && txId.indexOf('0x') < 0)
@@ -198,6 +206,23 @@ app.post('/create-wallet', async (req, res) => {
       }
 
       //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error fetching transactions `)
+      res.status(500).json({success:false,error:'error fetching transactions ' + error})
+    }
+  })
+
+  app.post('/freeze-trx', async (req, res) => {
+    try {
+
+   
+      const { key,amount, resourceType, receiverAddress,ownerAddress} = req.body;
+      
+      var response : any;
+      console.log('freeze ' + receiverAddress + ' ' + ownerAddress )
+      response = await freezeTRX(key,amount,receiverAddress,resourceType,ownerAddress)
+      res.json(response)
+      
     } catch (error) {
       console.log(`Error fetching transactions `)
       res.status(500).json({success:false,error:'error fetching transactions ' + error})
@@ -271,6 +296,97 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
+  app.post('/deposit-into-liquidity-pool', async (req, res) => {
+    try {
+  
+      const { tokenAddress,userAddress, amount,key} = req.body;
+      console.log("deposit into pool req: " + tokenAddress + " " + userAddress);
+      
+      const response = await depositIntoPool(key,tokenAddress,amount,userAddress);
+
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error creating wallet `)
+      res.status(500).json({success:false,error:'error creating wallet ' + error})
+    }
+  })
+
+  app.post('/get-user-deposit-in-pool', async (req, res) => {
+    try {
+  
+     
+      const { tokenAddress,userAddress} = req.body;
+      console.log("deposit into pool req: " + tokenAddress + " " + userAddress);
+    
+      const response = await getUserDepositFromPool(tokenAddress,userAddress);
+      console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error creating wallet `)
+      res.status(500).json({success:false,error:'error creating wallet ' + error})
+    }
+  })
+
+  app.post('/fetch-tron-resources', async (req, res) => {
+    try {
+  
+     
+      const { key,userAddress} = req.body;
+      console.log("fetch tron resources: "  + " " + userAddress);
+    
+      const response = await getTronResources(key,userAddress)
+      console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error creating wallet `)
+      res.status(500).json({success:false,error:'error creating wallet ' + error})
+    }
+  })
+
+  app.post('/swap', async (req, res) => {
+    try {
+  
+     
+      const { tokenA,tokenB, key, amount, fromAddress} = req.body;
+      console.log("do swap: "  + " " + tokenA);
+    
+      const response = await tronswap(tokenA,tokenB,fromAddress,key)
+      console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error creating wallet `)
+      res.status(500).json({success:false,error:'error creating wallet ' + error})
+    }
+  })
+
+  app.post('/issue-bsc-nft', async (req, res) => {
+    try {
+  
+     
+      const { key,borrower, creditScore, creditLimit, creditOfficer,creditManager} = req.body;
+      console.log("issue neft: "  + " " + borrower);
+    
+      const response = await issueNftCreditScore(key,borrower,
+        creditScore,creditLimit,creditOfficer,creditManager);
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error creating wallet `)
+      res.status(500).json({success:false,error:'error creating wallet ' + error})
+    }
+  })
+
+
   function validateToken(req: any)
   {
     const authHeader = req.headers['authorization']; // lowercase key
@@ -289,6 +405,8 @@ app.post('/create-wallet', async (req, res) => {
     return true;
 
   }
+
+  //listenDeposited().catch(console.error);
 
 
 

@@ -17,10 +17,15 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const tron_wallet_1 = require("./tron-wallet");
 const tron_contract_service_1 = require("./tron-contract-service");
 const tron_transfer_1 = require("./tron-transfer");
+const tron_freeze_1 = require("./tron-freeze");
 const bpay_escrow_client_1 = require("./bpay-escrow-client");
 const circle_wallet_1 = require("./circle-wallet");
 const eth_wallet_1 = require("./eth-wallet");
 const eth_balance_1 = require("./eth-balance");
+const tron_bfp_liquiditypool_1 = require("./tron-bfp-liquiditypool");
+const tron_event_listeners_1 = require("./tron-event-listeners");
+const tron_swap_1 = require("./tron-swap");
+const tron_bcs_nft_1 = require("./tron-bcs-nft");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -32,6 +37,7 @@ app.get('/', (req, res) => {
     res.send('Hello World!');
 });
 app.listen(PORT, () => {
+    //listenDeposited().catch(console.error);
     return console.log(`Express is listening at http://localhost:${PORT}`);
 });
 app.post('/create-wallet', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -149,11 +155,12 @@ app.get('/fetch-transaction-by-wallet/:address', (req, res) => __awaiter(void 0,
 }));
 app.post('/fetch-transaction-status/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { chain, symbol, txId, rpcUrl } = req.body;
+        const { chain, symbol, txId, rpcUrl, timeAllow } = req.body;
         var response;
         console.log('fetch status ' + symbol + ' ' + txId);
         if (chain == 'TRON') {
-            response = yield (0, tron_contract_service_1.fetchTransactionsByWallet)(txId);
+            //response = await fetchTransactionsByWallet(txId);
+            response = yield (0, tron_event_listeners_1.listenDeposited)(txId, symbol, timeAllow);
             res.json(response);
         }
         else if (symbol == 'USDC' && txId.indexOf('0x') < 0) {
@@ -162,10 +169,24 @@ app.post('/fetch-transaction-status/', (req, res) => __awaiter(void 0, void 0, v
             res.json(response);
         }
         else {
+            console.log('eth api route ');
             response = yield (0, eth_balance_1.fetchTransactionDetailEth)(txId, symbol, chain, rpcUrl);
             res.json(response);
         }
         //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error fetching transactions `);
+        res.status(500).json({ success: false, error: 'error fetching transactions ' + error });
+    }
+}));
+app.post('/freeze-trx', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, amount, resourceType, receiverAddress, ownerAddress } = req.body;
+        var response;
+        console.log('freeze ' + receiverAddress + ' ' + ownerAddress);
+        response = yield (0, tron_freeze_1.freezeTRX)(key, amount, receiverAddress, resourceType, ownerAddress);
+        res.json(response);
     }
     catch (error) {
         console.log(`Error fetching transactions `);
@@ -223,6 +244,75 @@ app.post('/approve-buyer', (req, res) => __awaiter(void 0, void 0, void 0, funct
         res.status(500).json({ success: false, error: 'error creating wallet ' + error });
     }
 }));
+app.post('/deposit-into-liquidity-pool', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { tokenAddress, userAddress, amount, key } = req.body;
+        console.log("deposit into pool req: " + tokenAddress + " " + userAddress);
+        const response = yield (0, tron_bfp_liquiditypool_1.depositIntoPool)(key, tokenAddress, amount, userAddress);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error creating wallet `);
+        res.status(500).json({ success: false, error: 'error creating wallet ' + error });
+    }
+}));
+app.post('/get-user-deposit-in-pool', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { tokenAddress, userAddress } = req.body;
+        console.log("deposit into pool req: " + tokenAddress + " " + userAddress);
+        const response = yield (0, tron_bfp_liquiditypool_1.getUserDepositFromPool)(tokenAddress, userAddress);
+        console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error creating wallet `);
+        res.status(500).json({ success: false, error: 'error creating wallet ' + error });
+    }
+}));
+app.post('/fetch-tron-resources', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, userAddress } = req.body;
+        console.log("fetch tron resources: " + " " + userAddress);
+        const response = yield (0, tron_freeze_1.getTronResources)(key, userAddress);
+        console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error creating wallet `);
+        res.status(500).json({ success: false, error: 'error creating wallet ' + error });
+    }
+}));
+app.post('/swap', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { tokenA, tokenB, key, amount, fromAddress } = req.body;
+        console.log("do swap: " + " " + tokenA);
+        const response = yield (0, tron_swap_1.tronswap)(tokenA, tokenB, fromAddress, key);
+        console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error creating wallet `);
+        res.status(500).json({ success: false, error: 'error creating wallet ' + error });
+    }
+}));
+app.post('/issue-bsc-nft', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, borrower, creditScore, creditLimit, creditOfficer, creditManager } = req.body;
+        console.log("issue neft: " + " " + borrower);
+        const response = yield (0, tron_bcs_nft_1.issueNftCreditScore)(key, borrower, creditScore, creditLimit, creditOfficer, creditManager);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error creating wallet `);
+        res.status(500).json({ success: false, error: 'error creating wallet ' + error });
+    }
+}));
 function validateToken(req) {
     const authHeader = req.headers['authorization']; // lowercase key
     const sourceCode = req.headers['x-source-code'];
@@ -236,4 +326,5 @@ function validateToken(req) {
     console.log('source code ' + xSourceCode + ' ' + xClientId);
     return true;
 }
+//listenDeposited().catch(console.error);
 //# sourceMappingURL=app.js.map

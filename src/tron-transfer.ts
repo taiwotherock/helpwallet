@@ -45,3 +45,63 @@ export async function transfer(receiverAddress: string, contractAddress: string,
   
 }
 
+export async function transactionTsq(walletAddress: string, rpcUrl: string) {
+
+   let rpcUrl2 : any ="https://nile.trongrid.io"
+
+   let queryParams = "/v1/accounts/" + walletAddress + "/transactions?limit=10"
+
+   const headers: Record<string, string> = {
+      'accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+
+    if (this.apiKey) {
+      headers['TRON-PRO-API-KEY'] = this.apiKey;
+    }
+
+    // Make the API request
+    const response = await fetch(rpcUrl2 + queryParams, {
+      method: 'GET',
+      headers,
+    });
+
+    console.log(response)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}, message: ${response.statusText}`);
+    }
+
+    const data: TronTransactionResponse = await response.json();
+    
+    if (!data.success) {
+      throw new Error('API request was not successful');
+    }
+
+    return data;
+
+}
+
+interface TronTransaction {
+   txID: string;
+   blockNumber: number;
+   blockTimeStamp: number;
+   contractResult: string[];
+   receipt: {
+     energy_usage: number;
+     energy_usage_total: number;
+     net_usage: number;
+     result: string;
+   };
+   log: any[];
+ }
+ 
+ interface TronTransactionResponse {
+   data: TronTransaction[];
+   success: boolean;
+   meta: {
+     at: number;
+     page_size: number;
+   };
+ }
+

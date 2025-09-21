@@ -2,6 +2,8 @@ sudo npm init -y
 sudo npm install tronweb 
 sudo npm install ethers
 
+sudo npm install tronweb --save
+
 https://tronweb.network/docu/docs/quickstart/
 
 sudo npm install --save-dev typescript
@@ -29,6 +31,8 @@ npx tsc
 node dist/app.js
 
 npx ts-node src/gadget-pick.ts - run specific file
+
+npx ts-node src/tron-freeze.ts
 
 https://www.quicknode.com/guides/other-chains/tron/how-to-deploy-and-interact-with-smart-contracts-on-tron
 
