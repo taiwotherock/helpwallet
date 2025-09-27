@@ -12,14 +12,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.issueNftCreditScore = issueNftCreditScore;
+exports.addCreditOfficer = addCreditOfficer;
 const tronweb_1 = require("tronweb");
 const dotenv_1 = __importDefault(require("dotenv"));
 const fs = require('fs');
 const path = require('path');
 dotenv_1.default.config();
-const bcsNftArtifact = JSON.parse(fs.readFileSync('./contracts-abi/BorderlessCreditScoreNFT.json', 'utf8'));
-function issueNftCreditScore(privateKey, borrower, creditScore, creditLimit, creditOfficer, creditManager) {
+const abiArtifact = JSON.parse(fs.readFileSync('./contracts-abi/AccessControlModule.json', 'utf8'));
+function addCreditOfficer(creditOfficer, privateKey) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({
@@ -27,18 +27,19 @@ function issueNftCreditScore(privateKey, borrower, creditScore, creditLimit, cre
                 privateKey: privateKey,
             });
             //const fromAddress1 = tronWeb.defaultAddress.base58;
-            let CONTRACT_ADDRESS = process.env.BORDERLESSCS_NFT_CONTRACT_ADDRESS;
+            let CONTRACT_ADDRESS = process.env.ACCESS_CONTROL_CONTRACT_ADDRESS;
             console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS);
+            console.log('credit address ' + creditOfficer);
             const me = tronWeb.defaultAddress.base58;
             console.log('from address ' + me);
-            // --- Load BorderLessNFT ---
-            const contract = yield tronWeb.contract(bcsNftArtifact.abi, CONTRACT_ADDRESS);
+            // --- Load JSON Contract ---
+            const contract = yield tronWeb.contract(abiArtifact.abi, CONTRACT_ADDRESS);
             // issue Credit score NFT
-            const tx = yield contract.issueCreditNFT(borrower, Number(creditScore), Number(creditLimit), creditOfficer, creditManager).send({
+            const tx = yield contract.addCreditOfficer(creditOfficer).send({
                 from: me,
                 feeLimit: 3000000000 // 100 TRX energy fee limit
             });
-            console.log("Credit NFT Issued. TxID:", tx);
+            console.log("Add address. TxID:", tx);
             return { success: true, txId: tx, message: 'SUCCESS' };
         }
         catch (err) {
@@ -47,4 +48,4 @@ function issueNftCreditScore(privateKey, borrower, creditScore, creditLimit, cre
         }
     });
 }
-//# sourceMappingURL=tron-bcs-nft.js.map
+//# sourceMappingURL=tron-access-control.js.map

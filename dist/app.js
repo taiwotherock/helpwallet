@@ -24,8 +24,10 @@ const eth_wallet_1 = require("./eth-wallet");
 const eth_balance_1 = require("./eth-balance");
 const tron_bfp_liquiditypool_1 = require("./tron-bfp-liquiditypool");
 const tron_event_listeners_1 = require("./tron-event-listeners");
-const tron_swap_1 = require("./tron-swap");
+const tron_swap_route_1 = require("./tron-swap-route");
 const tron_bcs_nft_1 = require("./tron-bcs-nft");
+const tron_access_control_1 = require("./tron-access-control");
+const tron_tx_status_1 = require("./tron-tx-status");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -153,14 +155,40 @@ app.get('/fetch-transaction-by-wallet/:address', (req, res) => __awaiter(void 0,
         res.status(500).json({ success: false, error: 'error fetching transactions ' + error });
     }
 }));
-app.post('/fetch-transaction-status/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post('/fetch-transaction-status', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { chain, symbol, txId, rpcUrl, timeAllow } = req.body;
         var response;
         console.log('fetch status ' + symbol + ' ' + txId);
         if (chain == 'TRON') {
-            //response = await fetchTransactionsByWallet(txId);
+            response = yield (0, tron_contract_service_1.fetchTransactionsByWallet)(txId);
             response = yield (0, tron_event_listeners_1.listenDeposited)(txId, symbol, timeAllow);
+            res.json(response);
+        }
+        else if (symbol == 'USDC' && txId.indexOf('0x') < 0) {
+            response = yield (0, circle_wallet_1.transferQueryUSDC)(txId, symbol);
+            console.log(response);
+            res.json(response);
+        }
+        else {
+            console.log('eth api route ');
+            response = yield (0, eth_balance_1.fetchTransactionDetailEth)(txId, symbol, chain, rpcUrl);
+            res.json(response);
+        }
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error fetching transactions `);
+        res.status(500).json({ success: false, error: 'error fetching transactions ' + error });
+    }
+}));
+app.post('/fetch-tx-byid', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { chain, symbol, txId, rpcUrl } = req.body;
+        var response;
+        console.log('fetch status by id' + symbol + ' ' + txId);
+        if (chain == 'TRON') {
+            response = yield (0, tron_tx_status_1.tranStatus)(txId);
             res.json(response);
         }
         else if (symbol == 'USDC' && txId.indexOf('0x') < 0) {
@@ -289,13 +317,13 @@ app.post('/swap', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { tokenA, tokenB, key, amount, fromAddress } = req.body;
         console.log("do swap: " + " " + tokenA);
-        const response = yield (0, tron_swap_1.tronswap)(tokenA, tokenB, fromAddress, key);
+        const response = yield (0, tron_swap_route_1.tronswaptrx)(tokenA, tokenB, fromAddress, key);
         console.log(response);
         res.json(response);
         //res.json(successResponse(response))
     }
     catch (error) {
-        console.log(`Error creating wallet `);
+        console.log(`Error with swapping `);
         res.status(500).json({ success: false, error: 'error creating wallet ' + error });
     }
 }));
@@ -311,6 +339,20 @@ app.post('/issue-bsc-nft', (req, res) => __awaiter(void 0, void 0, void 0, funct
     catch (error) {
         console.log(`Error creating wallet `);
         res.status(500).json({ success: false, error: 'error creating wallet ' + error });
+    }
+}));
+app.post('/add-credit-officer', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, creditOfficer } = req.body;
+        console.log("add credit officer: " + " " + creditOfficer);
+        const response = yield (0, tron_access_control_1.addCreditOfficer)(creditOfficer, key);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error add credit officer `);
+        res.status(500).json({ success: false, error: +error });
     }
 }));
 function validateToken(req) {

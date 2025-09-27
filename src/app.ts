@@ -13,7 +13,10 @@ import { scanCurrentBlock} from './tron-scan-block'
 import { depositIntoPool,getUserDepositFromPool} from './tron-bfp-liquiditypool'
 import { listenDeposited} from './tron-event-listeners'
 import { tronswap} from './tron-swap'
+import { tronswapv2,tronswaptrx} from './tron-swap-route'
 import { issueNftCreditScore} from './tron-bcs-nft'
+import { addCreditOfficer} from './tron-access-control'
+import { tranStatus} from './tron-tx-status'
 
 
 
@@ -179,7 +182,7 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
-  app.post('/fetch-transaction-status/', async (req, res) => {
+  app.post('/fetch-transaction-status', async (req, res) => {
     try {
 
    
@@ -187,8 +190,40 @@ app.post('/create-wallet', async (req, res) => {
       var response : any;
       console.log('fetch status ' + symbol + ' ' + txId )
       if(chain == 'TRON') {
-        //response = await fetchTransactionsByWallet(txId);
+        response = await fetchTransactionsByWallet(txId);
         response = await listenDeposited(txId,symbol,timeAllow)
+        res.json(response)
+      }
+      else if(symbol == 'USDC' && txId.indexOf('0x') < 0)
+      {
+         response = await transferQueryUSDC(txId,symbol)
+         console.log(response)
+
+         res.json(response)
+      }
+      else 
+      {
+        console.log('eth api route ') 
+        response = await fetchTransactionDetailEth(txId, symbol, chain, rpcUrl);
+         res.json(response)
+      }
+
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error fetching transactions `)
+      res.status(500).json({success:false,error:'error fetching transactions ' + error})
+    }
+  })
+
+  app.post('/fetch-tx-byid', async (req, res) => {
+    try {
+
+   
+      const { chain,symbol,txId,rpcUrl} = req.body;
+      var response : any;
+      console.log('fetch status by id' + symbol + ' ' + txId )
+      if(chain == 'TRON') {
+        response = await tranStatus(txId);
         res.json(response)
       }
       else if(symbol == 'USDC' && txId.indexOf('0x') < 0)
@@ -356,13 +391,13 @@ app.post('/create-wallet', async (req, res) => {
       const { tokenA,tokenB, key, amount, fromAddress} = req.body;
       console.log("do swap: "  + " " + tokenA);
     
-      const response = await tronswap(tokenA,tokenB,fromAddress,key)
+      const response = await tronswaptrx(tokenA,tokenB,fromAddress,key)
       console.log(response);
       res.json(response)
     
       //res.json(successResponse(response))
     } catch (error) {
-      console.log(`Error creating wallet `)
+      console.log(`Error with swapping `)
       res.status(500).json({success:false,error:'error creating wallet ' + error})
     }
   })
@@ -383,6 +418,25 @@ app.post('/create-wallet', async (req, res) => {
     } catch (error) {
       console.log(`Error creating wallet `)
       res.status(500).json({success:false,error:'error creating wallet ' + error})
+    }
+  })
+
+  app.post('/add-credit-officer', async (req, res) => {
+    try {
+  
+     
+      const { key, creditOfficer} = req.body;
+      console.log("add credit officer: "  + " " + creditOfficer);
+    
+      const response = await addCreditOfficer(creditOfficer,key);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error add credit officer `)
+      res.status(500).json({success:false,error: + error})
     }
   })
 

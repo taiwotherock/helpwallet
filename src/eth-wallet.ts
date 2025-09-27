@@ -14,7 +14,7 @@ export async function createWalletWithPhraseEth(chain: string, symbol: string) {
     const hdWalletNode = HDNodeWallet.fromMnemonic(wallet.mnemonic, "m/44'/60'/0'/0");
     const hdWallet = hdWalletNode.derivePath('0');
     const address = hdWallet.address;
-    const privateKey = hdWallet.privateKey.toString;
+    const privateKey = hdWallet.privateKey.toString();
     console.log("Address:" + address);
     console.log("privateKey:" + privateKey);
 
