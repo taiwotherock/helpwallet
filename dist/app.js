@@ -355,6 +355,23 @@ app.post('/add-credit-officer', (req, res) => __awaiter(void 0, void 0, void 0, 
         res.status(500).json({ success: false, error: +error });
     }
 }));
+app.get('/borrower-nft-profile/:address', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        /*if(!validateToken(req))
+        {
+          console.log(`Invalid authentication API key or token `)
+          res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+          return;
+        }*/
+        const response = yield (0, tron_bcs_nft_1.getBorrowerCreditProfile)(req.params.address);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+}));
 function validateToken(req) {
     const authHeader = req.headers['authorization']; // lowercase key
     const sourceCode = req.headers['x-source-code'];

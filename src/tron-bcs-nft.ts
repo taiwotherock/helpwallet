@@ -59,3 +59,34 @@ export async function issueNftCreditScore(privateKey: string,
 
     }
 }
+
+export async function getBorrowerCreditProfile(borrowerAddr: string) {
+
+  const tronWeb = new TronWeb({
+      fullHost: process.env.TRON_NODE_URL,
+      privateKey: process.env.PRIVATE_KEY_NILE
+    });
+    try {
+
+          let CONTRACT_ADDRESS = process.env.BORDERLESSCS_NFT_CONTRACT_ADDRESS;
+
+          console.log('contract pool ' + CONTRACT_ADDRESS)
+          console.log('user address ' + borrowerAddr)
+
+        // --- Load Token Contract ---
+        const contract = await tronWeb.contract(bcsNftArtifact.abi, CONTRACT_ADDRESS);
+
+        let result = await contract.getCreditProfileByBorrower(borrowerAddr).call();
+        console.log('result-profiles:: ' + result); //.toString(10));
+        return {success:true, message:result};
+    }
+    catch(err)
+    {
+      console.log('error:: ' + err.message)
+      return {success:false, message: err.message };
+    }
+
+
+
+}
+

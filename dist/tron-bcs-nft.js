@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.issueNftCreditScore = issueNftCreditScore;
+exports.getBorrowerCreditProfile = getBorrowerCreditProfile;
 const tronweb_1 = require("tronweb");
 const dotenv_1 = __importDefault(require("dotenv"));
 const fs = require('fs');
@@ -44,6 +45,28 @@ function issueNftCreditScore(privateKey, borrower, creditScore, creditLimit, cre
         catch (err) {
             console.log(err);
             return { success: false, txId: '', message: err.message };
+        }
+    });
+}
+function getBorrowerCreditProfile(borrowerAddr) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const tronWeb = new tronweb_1.TronWeb({
+            fullHost: process.env.TRON_NODE_URL,
+            privateKey: process.env.PRIVATE_KEY_NILE
+        });
+        try {
+            let CONTRACT_ADDRESS = process.env.BORDERLESSCS_NFT_CONTRACT_ADDRESS;
+            console.log('contract pool ' + CONTRACT_ADDRESS);
+            console.log('user address ' + borrowerAddr);
+            // --- Load Token Contract ---
+            const contract = yield tronWeb.contract(bcsNftArtifact.abi, CONTRACT_ADDRESS);
+            let result = yield contract.getCreditProfileByBorrower(borrowerAddr).call();
+            console.log('result-profiles:: ' + result); //.toString(10));
+            return { success: true, message: result };
+        }
+        catch (err) {
+            console.log('error:: ' + err.message);
+            return { success: false, message: err.message };
         }
     });
 }

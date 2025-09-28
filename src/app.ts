@@ -14,9 +14,10 @@ import { depositIntoPool,getUserDepositFromPool} from './tron-bfp-liquiditypool'
 import { listenDeposited} from './tron-event-listeners'
 import { tronswap} from './tron-swap'
 import { tronswapv2,tronswaptrx} from './tron-swap-route'
-import { issueNftCreditScore} from './tron-bcs-nft'
+import { issueNftCreditScore,getBorrowerCreditProfile} from './tron-bcs-nft'
 import { addCreditOfficer} from './tron-access-control'
 import { tranStatus} from './tron-tx-status'
+import { requestLoan,repay,liquidateLoanDue,approveAndDisburseLoan,getBorrowerOutstanding} from './tron-bfp-loanmgr'
 
 
 
@@ -435,10 +436,126 @@ app.post('/create-wallet', async (req, res) => {
     
       //res.json(successResponse(response))
     } catch (error) {
-      console.log(`Error add credit officer `)
-      res.status(500).json({success:false,error: + error})
+     console.log(`Error: add ` + error.message)
+      res.status(500).json({success:false, message: error.message})
     }
   })
+
+   app.get('/borrower-nft-profile/:address', async (req, res) => {
+    try {
+  
+      /*if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+        return;
+      }*/
+      
+      const response = await getBorrowerCreditProfile(req.params.address);
+  
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+     console.log(`Error: borrower profile ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/request-loan', async (req, res) => {
+    try {
+  
+     
+      const { key, tokenToBorrow,borrower,merchantAddress,amount} = req.body;
+      console.log("request-loan: "  + " " + borrower);
+    
+      const response = await requestLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error: request loan ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+   app.post('/approve-disburse-loan', async (req, res) => {
+    try {
+  
+     
+      const { key, tokenToBorrow,borrower,merchantAddress,amount} = req.body;
+      console.log("approve-disburse-loan: "  + " " + borrower);
+    
+      const response = await approveAndDisburseLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+    } catch (error) {
+      console.log(`Error: /approve-disburse-loan ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/repay-loan', async (req, res) => {
+    try {
+  
+     
+      const { key, tokenToBorrow,borrower,amount} = req.body;
+      console.log("repay-loan: "  + " " + borrower);
+    
+      const response = await repay(key,tokenToBorrow,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+    } catch (error) {
+      console.log(`Error: repay-loan ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/liquidate-loan', async (req, res) => {
+    try {
+  
+     
+      const { key, tokenToBorrow,borrower,amount} = req.body;
+      console.log("liquidate-loan: "  + " " + borrower);
+    
+      const response = await liquidateLoanDue(key,borrower,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+    } catch (error) {
+      console.log(`Error: liquidate-loan ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.get('/borrower-details/:address', async (req, res) => {
+    try {
+  
+      /*if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+        return;
+      }*/
+      
+      const response = await getBorrowerOutstanding(req.params.address);
+  
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+     console.log(`Error: borrower details ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
 
 
   function validateToken(req: any)
