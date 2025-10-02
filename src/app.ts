@@ -101,8 +101,12 @@ app.post('/create-wallet', async (req, res) => {
          res.json(response)
       }
       else if(chain == 'TRON' || symbol == 'TRX' || symbol == 'USDT') {
-          response = await fetchBalance(req.params.address);
-          res.json(response)
+        if(symbol == 'USDT')
+             response = await fetchContractBalance(req.params.address, null)
+            else 
+              response = await fetchBalance(req.params.address);
+         
+            res.json(response)
       }
       else  {
 
