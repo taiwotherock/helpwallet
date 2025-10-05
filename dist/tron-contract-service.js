@@ -20,8 +20,8 @@ dotenv_1.default.config();
 function fetchContractBalance(address, contractAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         const tronWeb = new tronweb_1.TronWeb({
-            fullHost: process.env.TRON_NODE_URL_LIVE,
-            privateKey: process.env.PRIVATE_KEY_LIVE,
+            fullHost: process.env.TRON_NODE_URL,
+            privateKey: process.env.PRIVATE_KEY_NILE,
         });
         let result = '';
         if (contractAddress == '' || contractAddress == null)
@@ -40,7 +40,7 @@ function fetchContractBalance(address, contractAddress) {
         catch (error) {
             console.error("trigger smart contract error", error);
         }
-        var response = { success: true, balance: result, symbol: 'USDT' };
+        var response = { success: true, balance: Number(result) / Math.pow(10, 6), symbol: 'USDT' };
         return response;
     });
 }

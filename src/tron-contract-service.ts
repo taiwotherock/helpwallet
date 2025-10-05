@@ -50,8 +50,8 @@ interface TronTransaction {
 export async function fetchContractBalance(address: string,contractAddress: string) {
 
     const tronWeb = new TronWeb({
-         fullHost: process.env.TRON_NODE_URL_LIVE,
-         privateKey: process.env.PRIVATE_KEY_LIVE,
+         fullHost: process.env.TRON_NODE_URL,
+         privateKey: process.env.PRIVATE_KEY_NILE,
        });
 
        let result ='';
@@ -74,7 +74,7 @@ export async function fetchContractBalance(address: string,contractAddress: stri
     }
 
 
-     var response = {success:true, balance: result, symbol: 'USDT' };
+     var response = {success:true, balance: Number(result)/Math.pow(10,6), symbol: 'USDT' };
      
      return response;
  
