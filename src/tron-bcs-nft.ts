@@ -22,7 +22,7 @@ export async function issueNftCreditScore(privateKey: string,
 
     const tronWeb = new TronWeb({
         fullHost: process.env.TRON_NODE_URL,
-        privateKey: privateKey,
+        privateKey: process.env.PRIVATE_KEY_NILE,
       });
 
       //const fromAddress1 = tronWeb.defaultAddress.base58;

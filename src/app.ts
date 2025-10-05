@@ -226,8 +226,9 @@ app.post('/create-wallet', async (req, res) => {
    
       const { chain,symbol,txId,rpcUrl} = req.body;
       var response : any;
-      console.log('fetch status by id' + symbol + ' ' + txId )
+      console.log('fetch status by id' + symbol + ' ' + txId +' ' + chain )
       if(chain == 'TRON') {
+        
         response = await tranStatus(txId);
         res.json(response)
       }
@@ -411,10 +412,10 @@ app.post('/create-wallet', async (req, res) => {
     try {
   
      
-      const { key,borrower, creditScore, creditLimit, creditOfficer,creditManager} = req.body;
-      console.log("issue neft: "  + " " + borrower);
+      const { key, borrowerAddress, creditScore, creditLimit, creditOfficer,creditManager} = req.body;
+      console.log("issue neft: "  + " " + borrowerAddress);
     
-      const response = await issueNftCreditScore(key,borrower,
+      const response = await issueNftCreditScore(key,borrowerAddress,
         creditScore,creditLimit,creditOfficer,creditManager);
       //console.log(response);
       res.json(response)

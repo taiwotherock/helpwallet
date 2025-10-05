@@ -25,7 +25,7 @@ function issueNftCreditScore(privateKey, borrower, creditScore, creditLimit, cre
         try {
             const tronWeb = new tronweb_1.TronWeb({
                 fullHost: process.env.TRON_NODE_URL,
-                privateKey: privateKey,
+                privateKey: process.env.PRIVATE_KEY_NILE,
             });
             //const fromAddress1 = tronWeb.defaultAddress.base58;
             let CONTRACT_ADDRESS = process.env.BORDERLESSCS_NFT_CONTRACT_ADDRESS;

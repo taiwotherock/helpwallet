@@ -28,6 +28,7 @@ const tron_swap_route_1 = require("./tron-swap-route");
 const tron_bcs_nft_1 = require("./tron-bcs-nft");
 const tron_access_control_1 = require("./tron-access-control");
 const tron_tx_status_1 = require("./tron-tx-status");
+const tron_bfp_loanmgr_1 = require("./tron-bfp-loanmgr");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -93,7 +94,10 @@ app.get('/balance/:address', (req, res) => __awaiter(void 0, void 0, void 0, fun
             res.json(response);
         }
         else if (chain == 'TRON' || symbol == 'TRX' || symbol == 'USDT') {
-            response = yield (0, tron_wallet_1.fetchBalance)(req.params.address);
+            if (symbol == 'USDT')
+                response = yield (0, tron_contract_service_1.fetchContractBalance)(req.params.address, null);
+            else
+                response = yield (0, tron_wallet_1.fetchBalance)(req.params.address);
             res.json(response);
         }
         else {
@@ -186,7 +190,7 @@ app.post('/fetch-tx-byid', (req, res) => __awaiter(void 0, void 0, void 0, funct
     try {
         const { chain, symbol, txId, rpcUrl } = req.body;
         var response;
-        console.log('fetch status by id' + symbol + ' ' + txId);
+        console.log('fetch status by id' + symbol + ' ' + txId + ' ' + chain);
         if (chain == 'TRON') {
             response = yield (0, tron_tx_status_1.tranStatus)(txId);
             res.json(response);
@@ -329,9 +333,9 @@ app.post('/swap', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 }));
 app.post('/issue-bsc-nft', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, borrower, creditScore, creditLimit, creditOfficer, creditManager } = req.body;
-        console.log("issue neft: " + " " + borrower);
-        const response = yield (0, tron_bcs_nft_1.issueNftCreditScore)(key, borrower, creditScore, creditLimit, creditOfficer, creditManager);
+        const { key, borrowerAddress, creditScore, creditLimit, creditOfficer, creditManager } = req.body;
+        console.log("issue neft: " + " " + borrowerAddress);
+        const response = yield (0, tron_bcs_nft_1.issueNftCreditScore)(key, borrowerAddress, creditScore, creditLimit, creditOfficer, creditManager);
         //console.log(response);
         res.json(response);
         //res.json(successResponse(response))
@@ -351,8 +355,8 @@ app.post('/add-credit-officer', (req, res) => __awaiter(void 0, void 0, void 0, 
         //res.json(successResponse(response))
     }
     catch (error) {
-        console.log(`Error add credit officer `);
-        res.status(500).json({ success: false, error: +error });
+        console.log(`Error: add ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
     }
 }));
 app.get('/borrower-nft-profile/:address', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -368,8 +372,78 @@ app.get('/borrower-nft-profile/:address', (req, res) => __awaiter(void 0, void 0
         //res.json(successResponse(response))
     }
     catch (error) {
-        console.log(error.message);
-        res.status(500).json({ success: false, error: error.message });
+        console.log(`Error: borrower profile ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/request-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, tokenToBorrow, borrower, merchantAddress, amount } = req.body;
+        console.log("request-loan: " + " " + borrower);
+        const response = yield (0, tron_bfp_loanmgr_1.requestLoan)(key, borrower, tokenToBorrow, merchantAddress, amount);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error: request loan ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/approve-disburse-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, tokenToBorrow, borrower, merchantAddress, amount } = req.body;
+        console.log("approve-disburse-loan: " + " " + borrower);
+        const response = yield (0, tron_bfp_loanmgr_1.approveAndDisburseLoan)(key, borrower, tokenToBorrow, merchantAddress, amount);
+        //console.log(response);
+        res.json(response);
+    }
+    catch (error) {
+        console.log(`Error: /approve-disburse-loan ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/repay-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, tokenToBorrow, borrower, amount } = req.body;
+        console.log("repay-loan: " + " " + borrower);
+        const response = yield (0, tron_bfp_loanmgr_1.repay)(key, tokenToBorrow, amount);
+        //console.log(response);
+        res.json(response);
+    }
+    catch (error) {
+        console.log(`Error: repay-loan ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/liquidate-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, tokenToBorrow, borrower, amount } = req.body;
+        console.log("liquidate-loan: " + " " + borrower);
+        const response = yield (0, tron_bfp_loanmgr_1.liquidateLoanDue)(key, borrower, amount);
+        //console.log(response);
+        res.json(response);
+    }
+    catch (error) {
+        console.log(`Error: liquidate-loan ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.get('/borrower-details/:address', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        /*if(!validateToken(req))
+        {
+          console.log(`Invalid authentication API key or token `)
+          res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+          return;
+        }*/
+        const response = yield (0, tron_bfp_loanmgr_1.getBorrowerOutstanding)(req.params.address);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error: borrower details ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
     }
 }));
 function validateToken(req) {
