@@ -14,11 +14,11 @@ import { depositIntoPool,getUserDepositFromPool} from './tron-bfp-liquiditypool'
 import { listenDeposited} from './tron-event-listeners'
 import { tronswap} from './tron-swap'
 import { tronswapv2,tronswaptrx} from './tron-swap-route'
-import { issueNftCreditScore,getBorrowerCreditProfile} from './tron-bcs-nft'
+import { issueNftCreditScore,getBorrowerCreditProfile,updateNftCreditScore} from './tron-bcs-nft'
 import { addCreditOfficer} from './tron-access-control'
 import { tranStatus} from './tron-tx-status'
 import { requestLoan,repay,liquidateLoanDue,approveAndDisburseLoan,getBorrowerOutstanding} from './tron-bfp-loanmgr'
-
+import { depositCollateral} from './tron-bfp-loanvault'
 
 
 dotenv.config();
@@ -228,7 +228,7 @@ app.post('/create-wallet', async (req, res) => {
       var response : any;
       console.log('fetch status by id' + symbol + ' ' + txId +' ' + chain )
       if(chain == 'TRON') {
-        
+
         response = await tranStatus(txId);
         res.json(response)
       }
@@ -257,11 +257,11 @@ app.post('/create-wallet', async (req, res) => {
     try {
 
    
-      const { key,amount, resourceType, receiverAddress,ownerAddress} = req.body;
+      const { key,amount, resourceType, receiverAddress} = req.body;
       
       var response : any;
-      console.log('freeze ' + receiverAddress + ' ' + ownerAddress )
-      response = await freezeTRX(key,amount,receiverAddress,resourceType,ownerAddress)
+      console.log('freeze ' + receiverAddress + ' ' + resourceType )
+      response = await freezeTRX(key,amount,receiverAddress,resourceType)
       res.json(response)
       
     } catch (error) {
@@ -427,6 +427,25 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
+    app.post('/update-bsc-nft', async (req, res) => {
+    try {
+  
+     
+      const { key, tokenId, creditScore, creditLimit, creditOfficer} = req.body;
+      console.log("update neft: "  + " " + tokenId);
+    
+      const response = await updateNftCreditScore(key,tokenId,
+        creditScore,creditLimit,creditOfficer);
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error update nft `)
+      res.status(500).json({success:false,error:'error update nft ' + error})
+    }
+  })
+
   app.post('/add-credit-officer', async (req, res) => {
     try {
   
@@ -473,6 +492,7 @@ app.post('/create-wallet', async (req, res) => {
      
       const { key, tokenToBorrow,borrower,merchantAddress,amount} = req.body;
       console.log("request-loan: "  + " " + borrower);
+      console.log("amount: "  + " " + amount);
     
       const response = await requestLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
       
@@ -486,14 +506,39 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
+  app.post('/deposit-collateral', async (req, res) => {
+    try {
+  
+     
+      const { key, tokenToBorrow,amount} = req.body;
+      console.log("deposit collateral: "  + " " + tokenToBorrow);
+      console.log("amount: "  + " " + amount);
+    
+      const response = await depositCollateral(key,tokenToBorrow,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error: deposit collateral ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
    app.post('/approve-disburse-loan', async (req, res) => {
     try {
   
      
-      const { key, tokenToBorrow,borrower,merchantAddress,amount} = req.body;
-      console.log("approve-disburse-loan: "  + " " + borrower);
-    
-      const response = await approveAndDisburseLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
+      const { key, tokenToBorrow,borrower,merchantAddress,amount,depositAmount,fee} = req.body;
+      console.log("borrower: "  + " " + borrower);
+      console.log("merchantAddress: "  + " " + merchantAddress);
+      console.log("tokenToBorrow: "  + " " + tokenToBorrow);
+      console.log("amount: "  + " " + amount);
+      
+      const response = await approveAndDisburseLoan(key,borrower,tokenToBorrow,merchantAddress,amount,
+        depositAmount,fee
+      );
       
       //console.log(response);
       res.json(response)

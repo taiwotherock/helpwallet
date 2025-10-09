@@ -7,7 +7,7 @@ dotenv.config();
 
 
 const bfpArtifact =JSON.parse(
-    fs.readFileSync('./contracts-abi/LoanManagerV3.json', 'utf8')
+    fs.readFileSync('./contracts-abi/LoanManagerV11.json', 'utf8')
 );
 
 
@@ -30,7 +30,9 @@ export async function requestLoan(privateKey: string,
       console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS)
       const me = tronWeb.defaultAddress.base58;    
       console.log('from address ' + me); 
-      console.log('from address ' + borrower);   
+      console.log('merchant Address ' + merchantAddress);   
+      console.log(Number(requestedAmount) * 1000000)
+      console.log('contract ' + tokenAddressToBorrow )
       if(borrower != me)
       {
          console.log('not borrower ' + borrower); 
@@ -40,11 +42,11 @@ export async function requestLoan(privateKey: string,
       // --- Load BorderLessNFT ---
       const contract = await tronWeb.contract(bfpArtifact.abi, CONTRACT_ADDRESS);
       
-      
+      console.log(Number(requestedAmount) * 1000000)
 
       // request for loan USDT
       const tx = await contract.requestLoan(
-        borrower, tokenAddressToBorrow, 
+        tokenAddressToBorrow, 
         Number(requestedAmount) * 1000000,
         merchantAddress
       ).send({
@@ -67,7 +69,8 @@ export async function approveAndDisburseLoan(privateKey: string,
   borrower: string,
   tokenAddressToBorrow: string,
   merchantAddress: string,
-  approvedAmount: string) {
+  approvedAmount: string,
+  depositAmount: Number,fee: Number) {
 
     try {
 
@@ -91,10 +94,12 @@ export async function approveAndDisburseLoan(privateKey: string,
   
       // --- Load BorderLessNFT ---
       const contract = await tronWeb.contract(bfpArtifact.abi, CONTRACT_ADDRESS);
-      
+
+            
       // request for loan USDT
       const tx = await contract.approveAndDisburse(
         borrower, tokenAddressToBorrow, Number(approvedAmount) * 1000000,
+        Number(depositAmount) *1000000,  Number(fee) * 100000,
         merchantAddress
       ).send({
         from: me,

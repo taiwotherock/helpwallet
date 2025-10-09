@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.issueNftCreditScore = issueNftCreditScore;
+exports.updateNftCreditScore = updateNftCreditScore;
 exports.getBorrowerCreditProfile = getBorrowerCreditProfile;
 const tronweb_1 = require("tronweb");
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -40,6 +41,34 @@ function issueNftCreditScore(privateKey, borrower, creditScore, creditLimit, cre
                 feeLimit: 3000000000 // 100 TRX energy fee limit
             });
             console.log("Credit NFT Issued. TxID:", tx);
+            return { success: true, txId: tx, message: 'SUCCESS' };
+        }
+        catch (err) {
+            console.log(err);
+            return { success: false, txId: '', message: err.message };
+        }
+    });
+}
+function updateNftCreditScore(privateKey, tokenId, creditScore, creditLimit, creditOfficer) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const tronWeb = new tronweb_1.TronWeb({
+                fullHost: process.env.TRON_NODE_URL,
+                privateKey: process.env.PRIVATE_KEY_NILE,
+            });
+            //const fromAddress1 = tronWeb.defaultAddress.base58;
+            let CONTRACT_ADDRESS = process.env.BORDERLESSCS_NFT_CONTRACT_ADDRESS;
+            console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS);
+            const me = tronWeb.defaultAddress.base58;
+            console.log('from address ' + me);
+            // --- Load BorderLessNFT ---
+            const contract = yield tronWeb.contract(bcsNftArtifact.abi, CONTRACT_ADDRESS);
+            // issue Credit score NFT
+            const tx = yield contract.updateCreditNFT(1, Number(creditScore), Number(creditLimit), creditOfficer).send({
+                from: me,
+                feeLimit: 3000000000 // 100 TRX energy fee limit
+            });
+            console.log("Credit NFT Updated. TxID:", tx);
             return { success: true, txId: tx, message: 'SUCCESS' };
         }
         catch (err) {

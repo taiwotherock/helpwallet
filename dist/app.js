@@ -29,6 +29,7 @@ const tron_bcs_nft_1 = require("./tron-bcs-nft");
 const tron_access_control_1 = require("./tron-access-control");
 const tron_tx_status_1 = require("./tron-tx-status");
 const tron_bfp_loanmgr_1 = require("./tron-bfp-loanmgr");
+const tron_bfp_loanvault_1 = require("./tron-bfp-loanvault");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -214,10 +215,10 @@ app.post('/fetch-tx-byid', (req, res) => __awaiter(void 0, void 0, void 0, funct
 }));
 app.post('/freeze-trx', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, amount, resourceType, receiverAddress, ownerAddress } = req.body;
+        const { key, amount, resourceType, receiverAddress } = req.body;
         var response;
-        console.log('freeze ' + receiverAddress + ' ' + ownerAddress);
-        response = yield (0, tron_freeze_1.freezeTRX)(key, amount, receiverAddress, resourceType, ownerAddress);
+        console.log('freeze ' + receiverAddress + ' ' + resourceType);
+        response = yield (0, tron_freeze_1.freezeTRX)(key, amount, receiverAddress, resourceType);
         res.json(response);
     }
     catch (error) {
@@ -345,6 +346,20 @@ app.post('/issue-bsc-nft', (req, res) => __awaiter(void 0, void 0, void 0, funct
         res.status(500).json({ success: false, error: 'error creating wallet ' + error });
     }
 }));
+app.post('/update-bsc-nft', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, tokenId, creditScore, creditLimit, creditOfficer } = req.body;
+        console.log("update neft: " + " " + tokenId);
+        const response = yield (0, tron_bcs_nft_1.updateNftCreditScore)(key, tokenId, creditScore, creditLimit, creditOfficer);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error update nft `);
+        res.status(500).json({ success: false, error: 'error update nft ' + error });
+    }
+}));
 app.post('/add-credit-officer', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { key, creditOfficer } = req.body;
@@ -380,6 +395,7 @@ app.post('/request-loan', (req, res) => __awaiter(void 0, void 0, void 0, functi
     try {
         const { key, tokenToBorrow, borrower, merchantAddress, amount } = req.body;
         console.log("request-loan: " + " " + borrower);
+        console.log("amount: " + " " + amount);
         const response = yield (0, tron_bfp_loanmgr_1.requestLoan)(key, borrower, tokenToBorrow, merchantAddress, amount);
         //console.log(response);
         res.json(response);
@@ -390,11 +406,29 @@ app.post('/request-loan', (req, res) => __awaiter(void 0, void 0, void 0, functi
         res.status(500).json({ success: false, message: error.message });
     }
 }));
+app.post('/deposit-collateral', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, tokenToBorrow, amount } = req.body;
+        console.log("deposit collateral: " + " " + tokenToBorrow);
+        console.log("amount: " + " " + amount);
+        const response = yield (0, tron_bfp_loanvault_1.depositCollateral)(key, tokenToBorrow, amount);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error: deposit collateral ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
 app.post('/approve-disburse-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, tokenToBorrow, borrower, merchantAddress, amount } = req.body;
-        console.log("approve-disburse-loan: " + " " + borrower);
-        const response = yield (0, tron_bfp_loanmgr_1.approveAndDisburseLoan)(key, borrower, tokenToBorrow, merchantAddress, amount);
+        const { key, tokenToBorrow, borrower, merchantAddress, amount, depositAmount, fee } = req.body;
+        console.log("borrower: " + " " + borrower);
+        console.log("merchantAddress: " + " " + merchantAddress);
+        console.log("tokenToBorrow: " + " " + tokenToBorrow);
+        console.log("amount: " + " " + amount);
+        const response = yield (0, tron_bfp_loanmgr_1.approveAndDisburseLoan)(key, borrower, tokenToBorrow, merchantAddress, amount, depositAmount, fee);
         //console.log(response);
         res.json(response);
     }

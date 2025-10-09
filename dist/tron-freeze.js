@@ -28,7 +28,7 @@ dotenv_1.default.config();
  fullHost: process.env.TRON_NODE_URL,
  privateKey: process.env.PRIVATE_KEY_NILE,
 });*/
-function freezeTRX(key, amount, receiverAddress, resourceType, ownerAddress) {
+function freezeTRX(key, amount, receiverAddress, resourceType) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({

@@ -17,7 +17,7 @@ dotenv.config();
 });*/
 
 export async function freezeTRX(key: string, amount: number, receiverAddress: string,
-   resourceType: string, ownerAddress: string) {
+   resourceType: string) {
 
        try {
 

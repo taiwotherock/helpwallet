@@ -7,7 +7,7 @@ dotenv.config();
 
 
 const abiArtifact =JSON.parse(
-    fs.readFileSync('./contracts-abi/AccessControlModule.json', 'utf8')
+    fs.readFileSync('./contracts-abi/AccessControlModuleV3.json', 'utf8')
 );
 
 
