@@ -13,12 +13,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addCreditOfficer = addCreditOfficer;
+exports.isCreditOfficer = isCreditOfficer;
 const tronweb_1 = require("tronweb");
 const dotenv_1 = __importDefault(require("dotenv"));
 const fs = require('fs');
 const path = require('path');
 dotenv_1.default.config();
-const abiArtifact = JSON.parse(fs.readFileSync('./contracts-abi/AccessControlModule.json', 'utf8'));
+const abiArtifact = JSON.parse(fs.readFileSync('./contracts-abi/AccessControlModuleV3.json', 'utf8'));
 function addCreditOfficer(creditOfficer, privateKey) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -41,6 +42,30 @@ function addCreditOfficer(creditOfficer, privateKey) {
             });
             console.log("Add address. TxID:", tx);
             return { success: true, txId: tx, message: 'SUCCESS' };
+        }
+        catch (err) {
+            console.log(err);
+            return { success: false, txId: '', message: err.message };
+        }
+    });
+}
+function isCreditOfficer(creditOfficer) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const tronWeb = new tronweb_1.TronWeb({
+                fullHost: process.env.TRON_NODE_URL,
+                privateKey: 'CD6F76549C53F210AF67B6CBFDF1DFB54C07EB659C5DC7E0A66CBF8376FE70BB',
+            });
+            //const fromAddress1 = tronWeb.defaultAddress.base58;
+            let CONTRACT_ADDRESS = process.env.ACCESS_CONTROL_CONTRACT_ADDRESS;
+            console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS);
+            console.log('credit address ' + creditOfficer);
+            // --- Load JSON Contract ---
+            const contract = yield tronWeb.contract(abiArtifact.abi, CONTRACT_ADDRESS);
+            // issue credit officer
+            let result = yield contract.isCreditOfficer(creditOfficer).call();
+            console.log('is credit officer:: ' + result);
+            return { success: true, txId: result, message: 'SUCCESS' };
         }
         catch (err) {
             console.log(err);

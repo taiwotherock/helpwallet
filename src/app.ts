@@ -15,10 +15,14 @@ import { listenDeposited} from './tron-event-listeners'
 import { tronswap} from './tron-swap'
 import { tronswapv2,tronswaptrx} from './tron-swap-route'
 import { issueNftCreditScore,getBorrowerCreditProfile,updateNftCreditScore} from './tron-bcs-nft'
-import { addCreditOfficer} from './tron-access-control'
+import { addCreditOfficer,isCreditOfficer} from './tron-access-control'
 import { tranStatus} from './tron-tx-status'
 import { requestLoan,repay,liquidateLoanDue,approveAndDisburseLoan,getBorrowerOutstanding} from './tron-bfp-loanmgr'
-import { depositCollateral} from './tron-bfp-loanvault'
+import { depositCollateral,removeCollateral} from './tron-bfp-loanvault'
+import { depositToVault,withdrawVault,whitelistOrBlackVaultUser,
+  merchantWithdrawFund,createLoan,repayLoan,setFeeAndRates,getBorrowerLoanOutstanding
+  ,fetchBorrowerLoans
+} from './tron-bfp-vault-lend'
 
 
 dotenv.config();
@@ -103,7 +107,7 @@ app.post('/create-wallet', async (req, res) => {
       else if(chain == 'TRON' || symbol == 'TRX' || symbol == 'USDT') {
         if(symbol == 'USDT')
              response = await fetchContractBalance(req.params.address, null)
-            else 
+          else 
               response = await fetchBalance(req.params.address);
          
             res.json(response)
@@ -132,14 +136,16 @@ app.post('/create-wallet', async (req, res) => {
         return;
       }
 
-      const { walletAddress,tokenAddress,rpcUrl,decimalNo} = req.body;
+      const { walletAddress,tokenAddress,rpcUrl,decimalNo,chain} = req.body;
       
-      console.log('bal ' + walletAddress + ' ' + tokenAddress)
+      console.log('bal ' + walletAddress + ' ' + tokenAddress + " " + chain)
       var response : any;
+      if(chain == 'TRON')
+        response = await fetchContractBalance(walletAddress,tokenAddress);
+      else
+        response = await fetchTokenBalance(tokenAddress, walletAddress,rpcUrl,decimalNo);
       
-
-          response = await fetchTokenBalance(tokenAddress, walletAddress,rpcUrl,decimalNo);
-          res.json(response)
+      res.json(response)
     
   
       //res.json(successResponse(response))
@@ -486,15 +492,37 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
+  app.get('/validate-credit-officer/:address', async (req, res) => {
+    try {
+  
+      /*if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+        return;
+      }*/
+      
+      const response = await isCreditOfficer(req.params.address);
+  
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+     console.log(`Error: is credit officer ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
   app.post('/request-loan', async (req, res) => {
     try {
   
      
-      const { key, tokenToBorrow,borrower,merchantAddress,amount} = req.body;
+      const { key, tokenToBorrow,borrower,merchantAddress,amount,depositAmount,fee,ref} = req.body;
       console.log("request-loan: "  + " " + borrower);
       console.log("amount: "  + " " + amount);
     
-      const response = await requestLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
+      const response = await createLoan(key,tokenToBorrow,ref,merchantAddress,amount,fee,depositAmount,borrower);
+      //requestLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
       
       //console.log(response);
       res.json(response)
@@ -515,6 +543,26 @@ app.post('/create-wallet', async (req, res) => {
       console.log("amount: "  + " " + amount);
     
       const response = await depositCollateral(key,tokenToBorrow,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error: deposit collateral ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/remove-collateral', async (req, res) => {
+    try {
+  
+     
+      const { key, borrower, tokenToBorrow,amount} = req.body;
+      console.log("remove collateral: "  + " " + tokenToBorrow);
+      console.log("amount: "  + " " + amount);
+    
+      const response = await removeCollateral(key,borrower,tokenToBorrow,amount);
       
       //console.log(response);
       res.json(response)
@@ -553,12 +601,12 @@ app.post('/create-wallet', async (req, res) => {
     try {
   
      
-      const { key, tokenToBorrow,borrower,amount} = req.body;
-      console.log("repay-loan: "  + " " + borrower);
+      const { key, amount,ref} = req.body;
+      console.log("repay-loan: "  + " " + ref);
     
-      const response = await repay(key,tokenToBorrow,amount);
+      const response = await repayLoan(key,ref,amount);
       
-      //console.log(response);
+      console.log(response);
       res.json(response)
     
     } catch (error) {
@@ -588,14 +636,15 @@ app.post('/create-wallet', async (req, res) => {
   app.get('/borrower-details/:address', async (req, res) => {
     try {
   
-      /*if(!validateToken(req))
+      if(!validateToken(req))
       {
         console.log(`Invalid authentication API key or token `)
         res.status(500).json({success:false,error:'Invalid authentication API key or token '})
         return;
-      }*/
+      }
       
-      const response = await getBorrowerOutstanding(req.params.address);
+      console.log(req.params.address)
+      const response = await fetchBorrowerLoans(req.params.address);
   
       res.json(response)
     
@@ -606,6 +655,124 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
+  
+  app.post('/deposit-into-lend-vault', async (req, res) => {
+    try {
+  
+     
+      const { key, tokenToBorrow,amount} = req.body;
+      console.log("deposit-into-lend-vault: "  + " " + tokenToBorrow);
+      console.log("amount: "  + " " + amount);
+    
+      const response = await depositToVault(key,tokenToBorrow,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error: deposit-into-lend-vault ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/withdraw-from-lend-vault', async (req, res) => {
+    try {
+  
+     
+      if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,message:'Invalid authentication API key or token '})
+        return;
+      }
+
+      const { key, tokenToBorrow,amount} = req.body;
+      console.log("withdraw-from-lend-vault: "  + " " + tokenToBorrow);
+      console.log("amount: "  + " " + amount);
+    
+      const response = await withdrawVault(key,tokenToBorrow,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error: withdraw-from-lend-vault ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/white-black-status', async (req, res) => {
+    try {
+  
+      if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,message:'Invalid authentication API key or token '})
+        return;
+      }
+     
+      const { key, address, whiteOrBlack,status,ctype,rpcUrl,contractAddress} = req.body;
+      console.log("address: "  + " " + address + ' ' + ctype);
+      let response : any;
+ 
+      response = await whitelistOrBlackVaultUser(key,address,status,whiteOrBlack);
+     
+
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: release offer ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/post-rates', async (req, res) => {
+    try {
+  
+     if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,message:'Invalid authentication API key or token '})
+        return;
+      }
+
+      const { key, platformFee,lenderFee,depositPercent} = req.body;
+      console.log("post-rates: "  + " " + depositPercent);
+    
+      const response = await setFeeAndRates(key,platformFee,lenderFee,depositPercent);
+      console.log(response);
+      res.json(response)
+    
+    } catch (error) {
+      console.log(`Error: post-rates ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/merchant-withdraw', async (req, res) => {
+    try {
+  
+     if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,message:'Invalid authentication API key or token '})
+        return;
+      }
+
+      const { key, tokenToBorrow} = req.body;
+      console.log("merchant-withdraw: "  + " " + tokenToBorrow);
+    
+      const response = await merchantWithdrawFund(key,tokenToBorrow);
+      console.log(response);
+      res.json(response)
+    
+    } catch (error) {
+      console.log(`Error: merchant-withdraw ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
 
 
   function validateToken(req: any)

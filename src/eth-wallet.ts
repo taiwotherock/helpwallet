@@ -22,6 +22,5 @@ export async function createWalletWithPhraseEth(chain: string, symbol: string) {
         chain: chain, phrase:wallet.mnemonic.phrase, symbol: symbol };
     
     return response;
-
   
 }

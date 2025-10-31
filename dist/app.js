@@ -30,6 +30,7 @@ const tron_access_control_1 = require("./tron-access-control");
 const tron_tx_status_1 = require("./tron-tx-status");
 const tron_bfp_loanmgr_1 = require("./tron-bfp-loanmgr");
 const tron_bfp_loanvault_1 = require("./tron-bfp-loanvault");
+const tron_bfp_vault_lend_1 = require("./tron-bfp-vault-lend");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -120,10 +121,13 @@ app.post('/token-balance', (req, res) => __awaiter(void 0, void 0, void 0, funct
             res.status(500).json({ success: false, error: 'Invalid authentication API key or token ' });
             return;
         }
-        const { walletAddress, tokenAddress, rpcUrl, decimalNo } = req.body;
-        console.log('bal ' + walletAddress + ' ' + tokenAddress);
+        const { walletAddress, tokenAddress, rpcUrl, decimalNo, chain } = req.body;
+        console.log('bal ' + walletAddress + ' ' + tokenAddress + " " + chain);
         var response;
-        response = yield (0, eth_balance_1.fetchTokenBalance)(tokenAddress, walletAddress, rpcUrl, decimalNo);
+        if (chain == 'TRON')
+            response = yield (0, tron_contract_service_1.fetchContractBalance)(walletAddress, tokenAddress);
+        else
+            response = yield (0, eth_balance_1.fetchTokenBalance)(tokenAddress, walletAddress, rpcUrl, decimalNo);
         res.json(response);
         //res.json(successResponse(response))
     }
@@ -391,12 +395,30 @@ app.get('/borrower-nft-profile/:address', (req, res) => __awaiter(void 0, void 0
         res.status(500).json({ success: false, message: error.message });
     }
 }));
+app.get('/validate-credit-officer/:address', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        /*if(!validateToken(req))
+        {
+          console.log(`Invalid authentication API key or token `)
+          res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+          return;
+        }*/
+        const response = yield (0, tron_access_control_1.isCreditOfficer)(req.params.address);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error: is credit officer ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
 app.post('/request-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, tokenToBorrow, borrower, merchantAddress, amount } = req.body;
+        const { key, tokenToBorrow, borrower, merchantAddress, amount, depositAmount, fee, ref } = req.body;
         console.log("request-loan: " + " " + borrower);
         console.log("amount: " + " " + amount);
-        const response = yield (0, tron_bfp_loanmgr_1.requestLoan)(key, borrower, tokenToBorrow, merchantAddress, amount);
+        const response = yield (0, tron_bfp_vault_lend_1.createLoan)(key, tokenToBorrow, ref, merchantAddress, amount, fee, depositAmount, borrower);
+        //requestLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
         //console.log(response);
         res.json(response);
         //res.json(successResponse(response))
@@ -412,6 +434,21 @@ app.post('/deposit-collateral', (req, res) => __awaiter(void 0, void 0, void 0, 
         console.log("deposit collateral: " + " " + tokenToBorrow);
         console.log("amount: " + " " + amount);
         const response = yield (0, tron_bfp_loanvault_1.depositCollateral)(key, tokenToBorrow, amount);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error: deposit collateral ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/remove-collateral', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, borrower, tokenToBorrow, amount } = req.body;
+        console.log("remove collateral: " + " " + tokenToBorrow);
+        console.log("amount: " + " " + amount);
+        const response = yield (0, tron_bfp_loanvault_1.removeCollateral)(key, borrower, tokenToBorrow, amount);
         //console.log(response);
         res.json(response);
         //res.json(successResponse(response))
@@ -439,10 +476,10 @@ app.post('/approve-disburse-loan', (req, res) => __awaiter(void 0, void 0, void 
 }));
 app.post('/repay-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, tokenToBorrow, borrower, amount } = req.body;
-        console.log("repay-loan: " + " " + borrower);
-        const response = yield (0, tron_bfp_loanmgr_1.repay)(key, tokenToBorrow, amount);
-        //console.log(response);
+        const { key, amount, ref } = req.body;
+        console.log("repay-loan: " + " " + ref);
+        const response = yield (0, tron_bfp_vault_lend_1.repayLoan)(key, ref, amount);
+        console.log(response);
         res.json(response);
     }
     catch (error) {
@@ -465,18 +502,107 @@ app.post('/liquidate-loan', (req, res) => __awaiter(void 0, void 0, void 0, func
 }));
 app.get('/borrower-details/:address', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        /*if(!validateToken(req))
-        {
-          console.log(`Invalid authentication API key or token `)
-          res.status(500).json({success:false,error:'Invalid authentication API key or token '})
-          return;
-        }*/
-        const response = yield (0, tron_bfp_loanmgr_1.getBorrowerOutstanding)(req.params.address);
+        if (!validateToken(req)) {
+            console.log(`Invalid authentication API key or token `);
+            res.status(500).json({ success: false, error: 'Invalid authentication API key or token ' });
+            return;
+        }
+        console.log(req.params.address);
+        const response = yield (0, tron_bfp_vault_lend_1.fetchBorrowerLoans)(req.params.address);
         res.json(response);
         //res.json(successResponse(response))
     }
     catch (error) {
         console.log(`Error: borrower details ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/deposit-into-lend-vault', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, tokenToBorrow, amount } = req.body;
+        console.log("deposit-into-lend-vault: " + " " + tokenToBorrow);
+        console.log("amount: " + " " + amount);
+        const response = yield (0, tron_bfp_vault_lend_1.depositToVault)(key, tokenToBorrow, amount);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error: deposit-into-lend-vault ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/withdraw-from-lend-vault', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!validateToken(req)) {
+            console.log(`Invalid authentication API key or token `);
+            res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
+            return;
+        }
+        const { key, tokenToBorrow, amount } = req.body;
+        console.log("withdraw-from-lend-vault: " + " " + tokenToBorrow);
+        console.log("amount: " + " " + amount);
+        const response = yield (0, tron_bfp_vault_lend_1.withdrawVault)(key, tokenToBorrow, amount);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error: withdraw-from-lend-vault ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/white-black-status', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!validateToken(req)) {
+            console.log(`Invalid authentication API key or token `);
+            res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
+            return;
+        }
+        const { key, address, whiteOrBlack, status, ctype, rpcUrl, contractAddress } = req.body;
+        console.log("address: " + " " + address + ' ' + ctype);
+        let response;
+        response = yield (0, tron_bfp_vault_lend_1.whitelistOrBlackVaultUser)(key, address, status, whiteOrBlack);
+        res.json(response);
+    }
+    catch (error) {
+        console.log(`Error: release offer ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/post-rates', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!validateToken(req)) {
+            console.log(`Invalid authentication API key or token `);
+            res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
+            return;
+        }
+        const { key, platformFee, lenderFee, depositPercent } = req.body;
+        console.log("post-rates: " + " " + depositPercent);
+        const response = yield (0, tron_bfp_vault_lend_1.setFeeAndRates)(key, platformFee, lenderFee, depositPercent);
+        console.log(response);
+        res.json(response);
+    }
+    catch (error) {
+        console.log(`Error: post-rates ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/merchant-withdraw', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!validateToken(req)) {
+            console.log(`Invalid authentication API key or token `);
+            res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
+            return;
+        }
+        const { key, tokenToBorrow, merchantAddress } = req.body;
+        console.log("merchant-withdraw: " + " " + tokenToBorrow);
+        const response = yield (0, tron_bfp_vault_lend_1.merchantWithdrawFund)(key, tokenToBorrow, merchantAddress);
+        console.log(response);
+        res.json(response);
+    }
+    catch (error) {
+        console.log(`Error: merchant-withdraw ` + error.message);
         res.status(500).json({ success: false, message: error.message });
     }
 }));

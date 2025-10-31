@@ -48,8 +48,7 @@ export async function fetchBalance(address: string) {
 
      var response = {success:true, balance: balance, symbol: 'TRX' };
      return response;
- 
-   
+    
  }
 
 

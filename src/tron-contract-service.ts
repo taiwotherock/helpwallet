@@ -73,12 +73,10 @@ export async function fetchContractBalance(address: string,contractAddress: stri
         console.error("trigger smart contract error",error)
     }
 
-
      var response = {success:true, balance: Number(result)/Math.pow(10,6), symbol: 'USDT' };
      
      return response;
- 
-   
+    
  }
 
  export async function fetchTransactionsByWallet(address: string) {
