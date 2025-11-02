@@ -60,7 +60,8 @@ function fetchBalanceEth(address, rpcUrl) {
             // Convert wei to ether
             const balanceEth = ethers_1.ethers.formatEther(balanceWei);
             console.log('balanceEth: ' + balanceEth);
-            return balanceEth;
+            return { success: true, balance: balanceEth };
+            //return balanceEth;
         }
         catch (error) {
             throw new Error(`Failed to fetch balance: ${error}`);

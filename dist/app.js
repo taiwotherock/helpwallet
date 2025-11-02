@@ -31,6 +31,9 @@ const tron_tx_status_1 = require("./tron-tx-status");
 const tron_bfp_loanmgr_1 = require("./tron-bfp-loanmgr");
 const tron_bfp_loanvault_1 = require("./tron-bfp-loanvault");
 const tron_bfp_vault_lend_1 = require("./tron-bfp-vault-lend");
+const eth_swap_1 = require("./eth-swap");
+const eth_access_control_client_1 = require("./eth-access-control-client");
+const eth_lending_1 = require("./eth-lending");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -121,13 +124,21 @@ app.post('/token-balance', (req, res) => __awaiter(void 0, void 0, void 0, funct
             res.status(500).json({ success: false, error: 'Invalid authentication API key or token ' });
             return;
         }
-        const { walletAddress, tokenAddress, rpcUrl, decimalNo, chain } = req.body;
-        console.log('bal ' + walletAddress + ' ' + tokenAddress + " " + chain);
+        const { walletAddress, tokenAddress, rpcUrl, decimalNo, chain, symbol } = req.body;
+        console.log('bal22 ' + walletAddress + ' ' + tokenAddress + " " + chain + " " + symbol);
         var response;
-        if (chain == 'TRON')
-            response = yield (0, tron_contract_service_1.fetchContractBalance)(walletAddress, tokenAddress);
-        else
-            response = yield (0, eth_balance_1.fetchTokenBalance)(tokenAddress, walletAddress, rpcUrl, decimalNo);
+        if (chain == 'TRON') {
+            if (symbol == 'TRX')
+                response = yield (0, tron_wallet_1.fetchBalance)(walletAddress);
+            else
+                response = yield (0, tron_contract_service_1.fetchContractBalance)(walletAddress, tokenAddress);
+        }
+        else {
+            if (symbol == 'ETH' || symbol == 'WETH' || symbol == 'BNB')
+                response = yield (0, eth_balance_1.fetchBalanceEth)(walletAddress, rpcUrl);
+            else
+                response = yield (0, eth_balance_1.fetchTokenBalance)(tokenAddress, walletAddress, rpcUrl, decimalNo);
+        }
         res.json(response);
         //res.json(successResponse(response))
     }
@@ -241,22 +252,27 @@ app.post('/transfer', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         const xClientSecret = process.env.X_CLIENT_SECRET;
         const xSourceCode = process.env.X_SOURCE_CODE;
         console.log('source code ' + xSourceCode + ' ' + xClientId);
-        const { receiverAddress, contractAddress, amount, senderAddress, chain, symbol, externalRef } = req.body;
+        const { key, receiverAddress, contractAddress, amount, senderAddress, chain, symbol, externalRef, rpcUrl } = req.body;
         console.log("transfer req: " + receiverAddress + " " + amount);
         var response;
-        if (symbol == 'USDC') {
-            response = yield (0, circle_wallet_1.transferUSDC)(senderAddress, receiverAddress, amount, contractAddress, externalRef, chain);
-            res.json(response);
+        /*if(symbol == 'USDC')
+        {
+          response = await transferUSDC(senderAddress, receiverAddress,amount,contractAddress,externalRef,chain);
+          res.json(response)
+  
+        }*/
+        if (chain == 'TRON') {
+            response = yield (0, tron_transfer_1.transfer)(receiverAddress, contractAddress, amount, senderAddress, chain, symbol);
         }
         else {
-            response = yield (0, tron_transfer_1.transfer)(receiverAddress, contractAddress, amount, senderAddress, chain, symbol);
-            res.json(response);
+            response = yield (0, eth_swap_1.internalTransfer)(key, amount, receiverAddress, symbol, rpcUrl, contractAddress);
         }
+        res.json(response);
         //res.json(successResponse(response))
     }
     catch (error) {
-        console.log(`Error creating wallet `);
-        res.status(500).json({ success: false, error: 'error creating wallet ' + error });
+        console.log(`Error doing transfer `);
+        res.status(500).json({ success: false, error: 'error doing transfer ' + error });
     }
 }));
 app.post('/approve-buyer', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -364,11 +380,15 @@ app.post('/update-bsc-nft', (req, res) => __awaiter(void 0, void 0, void 0, func
         res.status(500).json({ success: false, error: 'error update nft ' + error });
     }
 }));
-app.post('/add-credit-officer', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post('/manage-officer', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, creditOfficer } = req.body;
-        console.log("add credit officer: " + " " + creditOfficer);
-        const response = yield (0, tron_access_control_1.addCreditOfficer)(creditOfficer, key);
+        const { key, address, role, actionCode, rpcUrl, contractAddress, symbol, chain } = req.body;
+        console.log("add credit officer: " + " " + address + " " + role + " " + actionCode);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_access_control_1.addCreditOfficer)(address, key);
+        else
+            response = yield (0, eth_access_control_client_1.addAdmin)(key, rpcUrl, contractAddress, address, role);
         //console.log(response);
         res.json(response);
         //res.json(successResponse(response))
@@ -414,11 +434,14 @@ app.get('/validate-credit-officer/:address', (req, res) => __awaiter(void 0, voi
 }));
 app.post('/request-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, tokenToBorrow, borrower, merchantAddress, amount, depositAmount, fee, ref } = req.body;
+        const { key, tokenToBorrow, borrower, merchantAddress, amount, depositAmount, fee, ref, chain, rpcUrl, contractAddress } = req.body;
         console.log("request-loan: " + " " + borrower);
         console.log("amount: " + " " + amount);
-        const response = yield (0, tron_bfp_vault_lend_1.createLoan)(key, tokenToBorrow, ref, merchantAddress, amount, fee, depositAmount, borrower);
-        //requestLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.createLoan)(key, tokenToBorrow, ref, merchantAddress, amount, fee, depositAmount, borrower);
+        else
+            response = yield (0, eth_lending_1.ethCreateLoan)(key, amount, rpcUrl, contractAddress, tokenToBorrow, ref, merchantAddress, fee, depositAmount, borrower);
         //console.log(response);
         res.json(response);
         //res.json(successResponse(response))
@@ -430,10 +453,11 @@ app.post('/request-loan', (req, res) => __awaiter(void 0, void 0, void 0, functi
 }));
 app.post('/deposit-collateral', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, tokenToBorrow, amount } = req.body;
+        const { key, tokenToBorrow, amount, chain, rpcUrl } = req.body;
         console.log("deposit collateral: " + " " + tokenToBorrow);
         console.log("amount: " + " " + amount);
-        const response = yield (0, tron_bfp_loanvault_1.depositCollateral)(key, tokenToBorrow, amount);
+        let response;
+        response = yield (0, tron_bfp_loanvault_1.depositCollateral)(key, tokenToBorrow, amount);
         //console.log(response);
         res.json(response);
         //res.json(successResponse(response))
@@ -476,9 +500,13 @@ app.post('/approve-disburse-loan', (req, res) => __awaiter(void 0, void 0, void 
 }));
 app.post('/repay-loan', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, amount, ref } = req.body;
+        const { key, amount, ref, chain, rpcUrl, contractAddress, tokenAddress } = req.body;
         console.log("repay-loan: " + " " + ref);
-        const response = yield (0, tron_bfp_vault_lend_1.repayLoan)(key, ref, amount);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.repayLoan)(key, ref, amount);
+        else
+            response = yield (0, eth_lending_1.ethRepayLoan)(key, amount, rpcUrl, contractAddress, tokenAddress, ref);
         console.log(response);
         res.json(response);
     }
@@ -519,10 +547,14 @@ app.get('/borrower-details/:address', (req, res) => __awaiter(void 0, void 0, vo
 }));
 app.post('/deposit-into-lend-vault', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { key, tokenToBorrow, amount } = req.body;
+        const { key, tokenToBorrow, amount, chain, rpcUrl, contractAddress } = req.body;
         console.log("deposit-into-lend-vault: " + " " + tokenToBorrow);
         console.log("amount: " + " " + amount);
-        const response = yield (0, tron_bfp_vault_lend_1.depositToVault)(key, tokenToBorrow, amount);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.depositToVault)(key, tokenToBorrow, amount);
+        else
+            response = yield (0, eth_lending_1.ethDepositIntoVault)(key, amount, rpcUrl, contractAddress, tokenToBorrow);
         //console.log(response);
         res.json(response);
         //res.json(successResponse(response))
@@ -539,10 +571,14 @@ app.post('/withdraw-from-lend-vault', (req, res) => __awaiter(void 0, void 0, vo
             res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
             return;
         }
-        const { key, tokenToBorrow, amount } = req.body;
+        const { key, tokenToBorrow, amount, chain, rpcUrl, contractAddress } = req.body;
         console.log("withdraw-from-lend-vault: " + " " + tokenToBorrow);
         console.log("amount: " + " " + amount);
-        const response = yield (0, tron_bfp_vault_lend_1.withdrawVault)(key, tokenToBorrow, amount);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.withdrawVault)(key, tokenToBorrow, amount);
+        else
+            response = yield (0, eth_lending_1.ethWithdrawFromVault)(key, amount, rpcUrl, contractAddress, tokenToBorrow);
         //console.log(response);
         res.json(response);
         //res.json(successResponse(response))
@@ -559,10 +595,13 @@ app.post('/white-black-status', (req, res) => __awaiter(void 0, void 0, void 0, 
             res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
             return;
         }
-        const { key, address, whiteOrBlack, status, ctype, rpcUrl, contractAddress } = req.body;
+        const { key, address, whiteOrBlack, status, ctype, rpcUrl, contractAddress, chain } = req.body;
         console.log("address: " + " " + address + ' ' + ctype);
         let response;
-        response = yield (0, tron_bfp_vault_lend_1.whitelistOrBlackVaultUser)(key, address, status, whiteOrBlack);
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.whitelistOrBlackVaultUser)(key, address, status, whiteOrBlack);
+        else
+            response = yield (0, eth_lending_1.updateWhiteOrBlackListLend)(key, address, status, whiteOrBlack, rpcUrl, contractAddress);
         res.json(response);
     }
     catch (error) {
@@ -577,9 +616,13 @@ app.post('/post-rates', (req, res) => __awaiter(void 0, void 0, void 0, function
             res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
             return;
         }
-        const { key, platformFee, lenderFee, depositPercent } = req.body;
+        const { key, platformFee, lenderFee, depositPercent, rpcUrl, contractAddress, chain } = req.body;
         console.log("post-rates: " + " " + depositPercent);
-        const response = yield (0, tron_bfp_vault_lend_1.setFeeAndRates)(key, platformFee, lenderFee, depositPercent);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.setFeeAndRates)(key, platformFee, lenderFee, depositPercent);
+        else
+            response = yield (0, eth_lending_1.ethPostRates)(key, rpcUrl, contractAddress, lenderFee, platformFee, depositPercent);
         console.log(response);
         res.json(response);
     }
@@ -595,9 +638,13 @@ app.post('/merchant-withdraw', (req, res) => __awaiter(void 0, void 0, void 0, f
             res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
             return;
         }
-        const { key, tokenToBorrow, merchantAddress } = req.body;
+        const { key, tokenToBorrow, rpcUrl, contractAddress, chain } = req.body;
         console.log("merchant-withdraw: " + " " + tokenToBorrow);
-        const response = yield (0, tron_bfp_vault_lend_1.merchantWithdrawFund)(key, tokenToBorrow, merchantAddress);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.merchantWithdrawFund)(key, tokenToBorrow);
+        else
+            response = yield (0, eth_lending_1.ethDisburseLoanToMerchant)(key, rpcUrl, contractAddress, tokenToBorrow);
         console.log(response);
         res.json(response);
     }

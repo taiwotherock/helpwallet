@@ -118,6 +118,12 @@ function whitelistOrBlackVaultUser(privateKey, address, status, whiteOrBlack) {
             const me = tronWeb.defaultAddress.base58;
             console.log('from address ' + me);
             const contract = yield tronWeb.contract(bfpArtifact.abi, CONTRACT_ADDRESS);
+            const result = yield contract.whitelist(address).call();
+            const isWhitelisted = result === true || result.toString() === '1';
+            console.log(`Address ${address} whitelisted:`, isWhitelisted);
+            if (isWhitelisted) {
+                return { success: true, txId: '', message: 'SUCCESS' };
+            }
             let tx;
             if (whiteOrBlack == 'W') {
                 tx = yield contract.setWhitelist(address, status).send({
@@ -219,7 +225,7 @@ function repayLoan(privateKey, ref, amount) {
         }
     });
 }
-function merchantWithdrawFund(privateKey, token, merchantAddress) {
+function merchantWithdrawFund(privateKey, token) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({
@@ -232,7 +238,7 @@ function merchantWithdrawFund(privateKey, token, merchantAddress) {
             const me = tronWeb.defaultAddress.base58;
             console.log('from address ' + me);
             console.log('token ' + token);
-            console.log('merchantAddress ' + merchantAddress);
+            console.log('merchantAddress ' + me);
             // --- Load Loan Vault ---
             const contract = yield tronWeb.contract(bfpArtifact.abi, CONTRACT_ADDRESS);
             //let result = await contract.getLoans('TPBHCy5dD3NF2XBHGvhgFUiq5NND9Y3rBm',1,100).call();

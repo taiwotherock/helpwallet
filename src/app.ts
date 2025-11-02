@@ -23,6 +23,11 @@ import { depositToVault,withdrawVault,whitelistOrBlackVaultUser,
   merchantWithdrawFund,createLoan,repayLoan,setFeeAndRates,getBorrowerLoanOutstanding
   ,fetchBorrowerLoans
 } from './tron-bfp-vault-lend'
+import {internalTransfer,ethTranStatus} from './eth-swap'
+import {addAdmin,removeAdmin,checkIsAdmin} from './eth-access-control-client'
+import {ethCreateLoan,ethDepositIntoVault,ethRepayLoan,ethDisburseLoanToMerchant,
+  ethWithdrawFromVault,updateWhiteOrBlackListLend,ethPostRates} from './eth-lending'
+
 
 
 dotenv.config();
@@ -136,14 +141,23 @@ app.post('/create-wallet', async (req, res) => {
         return;
       }
 
-      const { walletAddress,tokenAddress,rpcUrl,decimalNo,chain} = req.body;
+      const { walletAddress,tokenAddress,rpcUrl,decimalNo,chain,symbol} = req.body;
       
-      console.log('bal ' + walletAddress + ' ' + tokenAddress + " " + chain)
+      console.log('bal22 ' + walletAddress + ' ' + tokenAddress + " " + chain + " " + symbol)
       var response : any;
       if(chain == 'TRON')
-        response = await fetchContractBalance(walletAddress,tokenAddress);
-      else
-        response = await fetchTokenBalance(tokenAddress, walletAddress,rpcUrl,decimalNo);
+      {
+        if(symbol == 'TRX')
+           response = await fetchBalance(walletAddress);
+        else 
+          response = await fetchContractBalance(walletAddress,tokenAddress);
+      }
+      else {
+        if(symbol == 'ETH' || symbol == 'WETH' || symbol == 'BNB')
+          response = await fetchBalanceEth(walletAddress,rpcUrl);
+        else
+          response = await fetchTokenBalance(tokenAddress, walletAddress,rpcUrl,decimalNo);
+      }
       
       res.json(response)
     
@@ -214,9 +228,9 @@ app.post('/create-wallet', async (req, res) => {
       }
       else 
       {
-        console.log('eth api route ') 
-        response = await fetchTransactionDetailEth(txId, symbol, chain, rpcUrl);
-         res.json(response)
+          console.log('eth api route ') 
+          response = await fetchTransactionDetailEth(txId, symbol, chain, rpcUrl);
+          res.json(response)
       }
 
       //res.json(successResponse(response))
@@ -247,9 +261,9 @@ app.post('/create-wallet', async (req, res) => {
       }
       else 
       {
-        console.log('eth api route ') 
-        response = await fetchTransactionDetailEth(txId, symbol, chain, rpcUrl);
-         res.json(response)
+          console.log('eth api route ') 
+          response = await fetchTransactionDetailEth(txId, symbol, chain, rpcUrl);
+          res.json(response)
       }
 
       //res.json(successResponse(response))
@@ -291,26 +305,33 @@ app.post('/create-wallet', async (req, res) => {
   
       console.log('source code ' + xSourceCode + ' ' + xClientId)
 
-      const { receiverAddress,contractAddress,amount, senderAddress,chain,symbol,externalRef} = req.body;
+      const { key,receiverAddress,contractAddress,amount, senderAddress,chain,symbol,externalRef,rpcUrl} = req.body;
       console.log("transfer req: " + receiverAddress + " " + amount);
       var response: any;
       
-      if(symbol == 'USDC')
+      /*if(symbol == 'USDC')
       {
         response = await transferUSDC(senderAddress, receiverAddress,amount,contractAddress,externalRef,chain);
         res.json(response)
 
-      }
-      else 
+      }*/
+      
+      if(chain == 'TRON')  
       {
         response = await transfer(receiverAddress,contractAddress,amount,senderAddress,chain,symbol);
-        res.json(response)
+        
       }
+      else
+      {
+          response = await internalTransfer(key,amount,receiverAddress,symbol,rpcUrl,contractAddress)
+      }
+
+      res.json(response)
     
       //res.json(successResponse(response))
     } catch (error) {
-      console.log(`Error creating wallet `)
-      res.status(500).json({success:false,error:'error creating wallet ' + error})
+      console.log(`Error doing transfer `)
+      res.status(500).json({success:false,error:'error doing transfer ' + error})
     }
   })
 
@@ -452,14 +473,18 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
-  app.post('/add-credit-officer', async (req, res) => {
+  app.post('/manage-officer', async (req, res) => {
     try {
   
      
-      const { key, creditOfficer} = req.body;
-      console.log("add credit officer: "  + " " + creditOfficer);
+      const { key, address, role,actionCode,rpcUrl,contractAddress,symbol,chain} = req.body;
+      console.log("add credit officer: "  + " " + address + " " + role + " " + actionCode);
     
-      const response = await addCreditOfficer(creditOfficer,key);
+      let response : any;
+      if(chain == 'TRON') 
+         response = await addCreditOfficer(address,key);
+      else  
+         response = await addAdmin(key,rpcUrl,contractAddress,address,role);
       
       //console.log(response);
       res.json(response)
@@ -517,12 +542,16 @@ app.post('/create-wallet', async (req, res) => {
     try {
   
      
-      const { key, tokenToBorrow,borrower,merchantAddress,amount,depositAmount,fee,ref} = req.body;
+      const { key, tokenToBorrow,borrower,merchantAddress,amount,depositAmount,fee,ref,chain,rpcUrl,contractAddress} = req.body;
       console.log("request-loan: "  + " " + borrower);
       console.log("amount: "  + " " + amount);
     
-      const response = await createLoan(key,tokenToBorrow,ref,merchantAddress,amount,fee,depositAmount,borrower);
-      //requestLoan(key,borrower,tokenToBorrow,merchantAddress,amount);
+      let response : any;
+      if(chain == 'TRON')
+        response = await createLoan(key,tokenToBorrow,ref,merchantAddress,amount,fee,depositAmount,borrower);
+      else
+        response = await ethCreateLoan(key,amount,rpcUrl,contractAddress,tokenToBorrow,ref,merchantAddress,fee,depositAmount,borrower);
+      
       
       //console.log(response);
       res.json(response)
@@ -538,11 +567,12 @@ app.post('/create-wallet', async (req, res) => {
     try {
   
      
-      const { key, tokenToBorrow,amount} = req.body;
+      const { key, tokenToBorrow,amount,chain,rpcUrl} = req.body;
       console.log("deposit collateral: "  + " " + tokenToBorrow);
       console.log("amount: "  + " " + amount);
     
-      const response = await depositCollateral(key,tokenToBorrow,amount);
+      let response : any;
+      response = await depositCollateral(key,tokenToBorrow,amount);
       
       //console.log(response);
       res.json(response)
@@ -601,10 +631,14 @@ app.post('/create-wallet', async (req, res) => {
     try {
   
      
-      const { key, amount,ref} = req.body;
+      const { key, amount,ref,chain,rpcUrl,contractAddress,tokenAddress} = req.body;
       console.log("repay-loan: "  + " " + ref);
     
-      const response = await repayLoan(key,ref,amount);
+      let response : any;
+      if(chain == 'TRON')
+         response = await repayLoan(key,ref,amount);
+      else 
+         response = await ethRepayLoan(key,amount,rpcUrl,contractAddress,tokenAddress,ref);
       
       console.log(response);
       res.json(response)
@@ -660,11 +694,16 @@ app.post('/create-wallet', async (req, res) => {
     try {
   
      
-      const { key, tokenToBorrow,amount} = req.body;
+      const { key, tokenToBorrow,amount,chain,rpcUrl,contractAddress} = req.body;
       console.log("deposit-into-lend-vault: "  + " " + tokenToBorrow);
       console.log("amount: "  + " " + amount);
     
-      const response = await depositToVault(key,tokenToBorrow,amount);
+      let response : any;
+      
+      if(chain == 'TRON')
+        response = await depositToVault(key,tokenToBorrow,amount);
+      else
+         response = await ethDepositIntoVault(key,amount,rpcUrl,contractAddress,tokenToBorrow);
       
       //console.log(response);
       res.json(response)
@@ -687,11 +726,16 @@ app.post('/create-wallet', async (req, res) => {
         return;
       }
 
-      const { key, tokenToBorrow,amount} = req.body;
+      const { key, tokenToBorrow,amount,chain,rpcUrl,contractAddress} = req.body;
       console.log("withdraw-from-lend-vault: "  + " " + tokenToBorrow);
       console.log("amount: "  + " " + amount);
     
-      const response = await withdrawVault(key,tokenToBorrow,amount);
+      let response : any;
+      if(chain == 'TRON')
+        response = await withdrawVault(key,tokenToBorrow,amount);
+      else 
+        response = await ethWithdrawFromVault(key,amount,rpcUrl,contractAddress,tokenToBorrow);
+          
       
       //console.log(response);
       res.json(response)
@@ -713,12 +757,14 @@ app.post('/create-wallet', async (req, res) => {
         return;
       }
      
-      const { key, address, whiteOrBlack,status,ctype,rpcUrl,contractAddress} = req.body;
+      const { key, address, whiteOrBlack,status,ctype,rpcUrl,contractAddress,chain} = req.body;
       console.log("address: "  + " " + address + ' ' + ctype);
       let response : any;
  
-      response = await whitelistOrBlackVaultUser(key,address,status,whiteOrBlack);
-     
+      if(chain == 'TRON')
+        response = await whitelistOrBlackVaultUser(key,address,status,whiteOrBlack);
+      else
+        response = await updateWhiteOrBlackListLend(key,address,status,whiteOrBlack,rpcUrl,contractAddress);
 
       res.json(response)
  
@@ -738,10 +784,16 @@ app.post('/create-wallet', async (req, res) => {
         return;
       }
 
-      const { key, platformFee,lenderFee,depositPercent} = req.body;
+      const { key, platformFee,lenderFee,depositPercent,rpcUrl,contractAddress,chain} = req.body;
       console.log("post-rates: "  + " " + depositPercent);
     
-      const response = await setFeeAndRates(key,platformFee,lenderFee,depositPercent);
+      let response : any;
+      
+      if(chain == 'TRON')
+        response = await setFeeAndRates(key,platformFee,lenderFee,depositPercent);
+      else 
+        response = await ethPostRates(key,rpcUrl,contractAddress,lenderFee,platformFee,depositPercent);
+
       console.log(response);
       res.json(response)
     
@@ -761,10 +813,15 @@ app.post('/create-wallet', async (req, res) => {
         return;
       }
 
-      const { key, tokenToBorrow} = req.body;
+      const { key, tokenToBorrow,rpcUrl,contractAddress,chain} = req.body;
       console.log("merchant-withdraw: "  + " " + tokenToBorrow);
     
-      const response = await merchantWithdrawFund(key,tokenToBorrow);
+      let response: any;
+      if(chain == 'TRON')
+        response = await merchantWithdrawFund(key,tokenToBorrow);
+      else 
+        response = await ethDisburseLoanToMerchant(key,rpcUrl,contractAddress,tokenToBorrow);
+
       console.log(response);
       res.json(response)
     

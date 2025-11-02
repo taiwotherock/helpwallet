@@ -66,8 +66,10 @@ export async function fetchBalanceEth(address: string, rpcUrl: string) {
       const balanceEth = ethers.formatEther(balanceWei);
 
       console.log('balanceEth: ' + balanceEth)
+
+      return {success:true, balance: balanceEth };
       
-      return balanceEth;
+      //return balanceEth;
     } catch (error) {
       throw new Error(`Failed to fetch balance: ${error}`);
     }
