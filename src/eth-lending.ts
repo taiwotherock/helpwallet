@@ -16,7 +16,7 @@ const ABI = [
   "function withdrawFromVault(address token, uint256 amount) external",
   "function setWhitelist(address user, bool status) external",
   "function repayLoan(bytes32 ref, uint256 amount) external",
-  "function withdrawMerchantFund(address token) external ",
+  "function withdrawMerchantFund(address token) external",
   "function setFeeRate(uint256 platformFeeRate, uint256 lenderFeeRate) external",
   "function getMerchantFund(address merchant, address token) external",
   "function setDepositContributionPercent(uint256 depositContributionPercent) external",
@@ -134,7 +134,7 @@ export async function ethDepositIntoVault(key: string,
     const bal = ethers.formatUnits(balance, decimals);
     console.log(`Vault Token Balance: ${bal}`);
 
-    return {success: true, message: txDetail, txId: tx.hash  };
+    return {success: true, message: 'PENDING', txId: tx.hash  };
 }
 
 // ====== Main: Withdraw into vault ======
@@ -209,7 +209,7 @@ export async function ethWithdrawFromVault(key: string,
     const bal = ethers.formatUnits(balance3, decimalNo);
     console.log(`Vault Token Balance: ${bal}`);
 
-    return {success: true, message: txDetail, txId: tx.hash  };
+    return {success: true, message: 'PENDING', txId: tx.hash  };
 }
 
 export async function updateWhiteOrBlackListLend(key:string,address:
@@ -430,13 +430,13 @@ export async function ethDisburseLoanToMerchant(key: string,
  ) {
     // Generate unique reference
 
-    
+    console.log('rpc ' + rpcUrl)
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(key!, provider);
     const contract = new ethers.Contract(contractAddress!, ABI, wallet);
     const publicAddress = await wallet.getAddress();
 
-    console.log('amount ' + tokenAddress)
+    console.log('token address ' + tokenAddress)
 
     console.log("Public address:", publicAddress);
    
@@ -448,15 +448,23 @@ export async function ethDisburseLoanToMerchant(key: string,
 
     console.log('contract address: ' + contractAddress)
     console.log('contract address: ' + tokenContractAddress)
+
+    //console.log("Contract address:", contract.address);
+   // console.log("Available functions:", Object.keys(contract.functions));
     
     // Send transaction
       console.log('processing...')
       //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
     //function repayLoan(bytes32 ref, uint256 amount) external
-     const response = await contract.getMerchantFund(publicAddress,tokenAddress);
-     console.log(' merchant fund ' + response);
+    const nonce = await wallet.getNonce();
+    // const response = await contract.getMerchantFund(publicAddress,tokenAddress, {nonce});
+   //  console.log(response);
 
-      const tx = await contract.withdrawMerchantFund(tokenAddress);
+     
+      const tx = await contract.withdrawMerchantFund(tokenAddress, {nonce: nonce,
+        maxFeePerGas: ethers.parseUnits('40', 'gwei'),          // increase from your last
+        maxPriorityFeePerGas: ethers.parseUnits('3', 'gwei')
+      });
        
     console.log(`🚀 Transaction sent: ${tx.hash}`);
     const receipt = await tx.wait();

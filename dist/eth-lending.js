@@ -37,7 +37,7 @@ const ABI = [
     "function withdrawFromVault(address token, uint256 amount) external",
     "function setWhitelist(address user, bool status) external",
     "function repayLoan(bytes32 ref, uint256 amount) external",
-    "function withdrawMerchantFund(address token) external ",
+    "function withdrawMerchantFund(address token) external",
     "function setFeeRate(uint256 platformFeeRate, uint256 lenderFeeRate) external",
     "function getMerchantFund(address merchant, address token) external",
     "function setDepositContributionPercent(uint256 depositContributionPercent) external",
@@ -120,7 +120,7 @@ function ethDepositIntoVault(key, amount, rpcUrl, contractAddress, tokenAddress)
         console.log('bal ' + balance + ' ' + decimals);
         const bal = ethers_1.ethers.formatUnits(balance, decimals);
         console.log(`Vault Token Balance: ${bal}`);
-        return { success: true, message: txDetail, txId: tx.hash };
+        return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
 // ====== Main: Withdraw into vault ======
@@ -172,7 +172,7 @@ function ethWithdrawFromVault(key, amount, rpcUrl, contractAddress, tokenAddress
         console.log('bal ' + balance3 + ' ' + decimalNo);
         const bal = ethers_1.ethers.formatUnits(balance3, decimalNo);
         console.log(`Vault Token Balance: ${bal}`);
-        return { success: true, message: txDetail, txId: tx.hash };
+        return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
 function updateWhiteOrBlackListLend(key, address, status, whiteOrBlack, rpcUrl, contractAddress) {
@@ -324,11 +324,12 @@ function ethRepayLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx) 
 function ethDisburseLoanToMerchant(key, rpcUrl, contractAddress, tokenAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         // Generate unique reference
+        console.log('rpc ' + rpcUrl);
         const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
         const wallet = new ethers_1.ethers.Wallet(key, provider);
         const contract = new ethers_1.ethers.Contract(contractAddress, ABI, wallet);
         const publicAddress = yield wallet.getAddress();
-        console.log('amount ' + tokenAddress);
+        console.log('token address ' + tokenAddress);
         console.log("Public address:", publicAddress);
         const tokenContractAddress = ethers_1.ethers.getAddress(tokenAddress); //USDT or USDC
         const tokenContract1 = new ethers_1.ethers.Contract(tokenContractAddress, ERC20_ABI, wallet);
@@ -336,13 +337,19 @@ function ethDisburseLoanToMerchant(key, rpcUrl, contractAddress, tokenAddress) {
         console.log("vault balance " + vaultBalance1);
         console.log('contract address: ' + contractAddress);
         console.log('contract address: ' + tokenContractAddress);
+        //console.log("Contract address:", contract.address);
+        // console.log("Available functions:", Object.keys(contract.functions));
         // Send transaction
         console.log('processing...');
         //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
         //function repayLoan(bytes32 ref, uint256 amount) external
-        //const response = await contract.getMerchantFund(publicAddress,tokenAddress);
-        //console.log(' merchant fund ' + response);
-        const tx = yield contract.withdrawMerchantFund(tokenAddress);
+        const nonce = yield wallet.getNonce();
+        // const response = await contract.getMerchantFund(publicAddress,tokenAddress, {nonce});
+        //  console.log(response);
+        const tx = yield contract.withdrawMerchantFund(tokenAddress, { nonce: nonce,
+            maxFeePerGas: ethers_1.ethers.parseUnits('40', 'gwei'), // increase from your last
+            maxPriorityFeePerGas: ethers_1.ethers.parseUnits('3', 'gwei')
+        });
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
