@@ -11,10 +11,8 @@ const CONTRACT_ADDRESS = process.env.ACCESS_CONTROL_CONTRACT_ADDRESS; // Deploye
 
 // ====== ABI (minimal) ======
 const ABI = [
-  "function grantRole(bytes32 role, address account) external",
-  "function revokeRole(bytes32 role, address account) external",
+  "function addCreditOfficer(address account) external",
   "function isCreditOfficer(address account) public view returns (bool)",
-  "function isKeeper(address account) public view returns (bool) ",
   "function isAdmin(address account) public view returns (bool)"
 ];
 
@@ -34,29 +32,30 @@ export async function addAdmin(key: string, rpcUrl: string, contractAddress:stri
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new ethers.Wallet(key, provider);
+  console.log("contract address: " + contractAddress);
   const contract = new ethers.Contract(contractAddress, ABI, wallet);
   const role2 = keccak256(toUtf8Bytes(role));
-  console.log("grant role " + role +role2);
+  console.log("grant role " + role + ' ' + role2);
 
-  let result: boolean = await contract.isAdmin(address);
-  console.log(result)
-  if(result)
+   let result: boolean = false;
+
+  if(role == 'CREDIT_OFFICER')
   {
-     return {success:true, message:"SUCCESS", txId: ''};
-  }
+      //addCreditOfficer
+      result = await contract.isCreditOfficer(address);
+      console.log(result)
+      if(result)
+      {
+        return {success:true, message:"SUCCESS", txId: ''};
+      }
 
-  result = await contract.isCreditOfficer(address);
-  console.log(result)
-  if(result)
-  {
-     return {success:true, message:"SUCCESS", txId: ''};
+       const tx = await contract.addCreditOfficer(address);
+        console.log(`Transaction sent: ${tx.hash}`);
+        await tx.wait();
+        console.log(`credit role granted to ${address}`);
+        return {success: true, message:'SUCCESS', txId: tx.hash }
   }
-
-  const tx = await contract.grantRole(role2, address);
-  console.log(`Transaction sent: ${tx.hash}`);
-  await tx.wait();
-  console.log(`Admin role granted to ${address}`);
-  return {success: true, message:'SUCCESS', txId: tx.hash }
+       
 }
 
 /**

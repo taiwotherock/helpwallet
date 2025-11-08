@@ -22,6 +22,7 @@ exports.ethPostRates = ethPostRates;
 exports.getProtocolStats = getProtocolStats;
 exports.getBorrowerStats = getBorrowerStats;
 exports.getLenderStats = getLenderStats;
+exports.getLoanData = getLoanData;
 const ethers_1 = require("ethers");
 const ethers_2 = require("ethers");
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -38,8 +39,10 @@ const ABI = [
     "function repayLoan(bytes32 ref, uint256 amount) external",
     "function withdrawMerchantFund(address token) external ",
     "function setFeeRate(uint256 platformFeeRate, uint256 lenderFeeRate) external",
+    "function getMerchantFund(address merchant, address token) external",
     "function setDepositContributionPercent(uint256 depositContributionPercent) external",
     "function createLoan(bytes32 ref,address token, address merchant, uint256 principal,uint256 fee, uint256 depositAmount, address borrower) external",
+    "function getLoanData(bytes32 ref) external view returns (address borrower, address token, uint256 principal, uint256 outstanding, uint256 totalPaid)",
 ];
 // Minimal ERC20 ABI
 const ERC20_ABI = [
@@ -61,7 +64,7 @@ function ethDepositIntoVault(key, amount, rpcUrl, contractAddress, tokenAddress)
         const wallet = new ethers_1.ethers.Wallet(key, provider);
         const contract = new ethers_1.ethers.Contract(contractAddress, ABI, wallet);
         const publicAddress = yield wallet.getAddress();
-        console.log('amount ' + amount);
+        console.log('amount in ' + amount);
         console.log("Public address:", publicAddress);
         const usdtAddress = ethers_1.ethers.getAddress(tokenAddress); //USDT
         const usdtContract = new ethers_1.ethers.Contract(usdtAddress, ERC20_ABI, wallet);
@@ -71,16 +74,33 @@ function ethDepositIntoVault(key, amount, rpcUrl, contractAddress, tokenAddress)
         console.log('usdt amt ' + amountInt);
         const userBalance = yield usdtContract.balanceOf(publicAddress);
         console.log("USDT user balance " + userBalance);
-        console.log("USDT user balance " + ethers_1.ethers.parseUnits(userBalance.toString(), decimalNo));
-        const approveTx = yield usdtContract.approve(contractAddress, amountInt);
+        const userBalInt = Number(ethers_1.ethers.formatUnits(userBalance.toString(), decimalNo));
+        console.log("USDT user balance " + userBalInt);
+        if (userBalInt <= Number(amount)) {
+            return { success: false, message: 'Insufficient Balance', txId: '' };
+        }
+        // const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+        /*const [allowance, decimals2] = await Promise.all([
+          usdtContract.allowance(publicAddress, contractAddress),
+          usdtContract.decimals()
+        ]);
+    
+        console.log("decimals allowance " + allowance + " " + decimals2);*/
+        const approveTx = yield usdtContract.approve(contractAddress, amountInt, {
+            maxFeePerGas: ethers_1.ethers.parseUnits('100', 'gwei'), // increase from your last
+            maxPriorityFeePerGas: ethers_1.ethers.parseUnits('30', 'gwei'),
+        });
         const tx3 = yield approveTx.wait();
         console.log(tx3);
         console.log("USDT approved to spend USDT ");
         console.log('contract address: ' + contractAddress);
         // Send transaction
         //function depositToVault(address token, uint256 amount) external
-        console.log('processing...');
-        const tx = yield contract.depositToVault(tokenAddress, amountInt);
+        console.log('processing...' + amountInt);
+        const tx = yield contract.depositToVault(tokenAddress, amountInt, {
+            maxFeePerGas: ethers_1.ethers.parseUnits('40', 'gwei'), // increase from your last
+            maxPriorityFeePerGas: ethers_1.ethers.parseUnits('3', 'gwei'),
+        });
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
@@ -93,7 +113,7 @@ function ethDepositIntoVault(key, amount, rpcUrl, contractAddress, tokenAddress)
         }
         const txDetail = yield provider.getTransaction(tx.hash);
         console.log("Raw tx data:", txDetail.data);
-        console.log(`\n🎉 Offer successfully created! Ref: `);
+        console.log(`\n🎉 deposit into vault success created! Ref: `);
         const tokenContract = new ethers_1.ethers.Contract(tokenAddress, ERC20_ABI, provider);
         const balance = yield tokenContract.balanceOf(contractAddress);
         const decimals = yield tokenContract.decimals();
@@ -195,35 +215,44 @@ function ethCreateLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx,
         const tokenContractAddress = ethers_1.ethers.getAddress(tokenAddress); //USDT or USDC
         const tokenContract1 = new ethers_1.ethers.Contract(tokenContractAddress, ERC20_ABI, wallet);
         const decimalNo = yield tokenContract1.decimals();
-        const userBalance = yield tokenContract1.balanceOf(publicAddress);
-        const userBal = ethers_1.ethers.formatUnits(userBalance, decimalNo);
+        /*const userBalance = await tokenContract1.balanceOf(publicAddress);
+        const userBal = ethers.formatUnits(userBalance, decimalNo);
         console.log('decimalNo ' + decimalNo);
         console.log(" user balance " + userBalance);
         console.log(" user balance " + userBal);
+        */
+        const balanceWei = yield provider.getBalance(publicAddress);
+        console.log('balanceWei: ' + balanceWei.toString());
+        //const balanceEth = Number(ethers.formatEther(balanceWei));
+        if (Number(balanceWei.toString()) <= 0) {
+            return { success: false, message: 'Insufficient gas token', txId: balanceWei.toString() };
+        }
+        if (fee == "0")
+            fee = "1";
+        console.log('decimalNo ' + decimalNo);
+        console.log('amount ' + amount);
+        console.log('depositAmt ' + depositAmount);
+        console.log('feeInt ' + fee);
         const amountInt = ethers_1.ethers.parseUnits(amount, decimalNo); // scaled to 1e18
         const depositAmt = ethers_1.ethers.parseUnits(depositAmount, decimalNo);
         const feeInt = ethers_1.ethers.parseUnits(fee, decimalNo);
         console.log('amt to send ' + amountInt);
-        console.log(" user balance " + ethers_1.ethers.parseUnits(userBalance.toString(), decimalNo));
-        const approveTx = yield tokenContract1.approve(contractAddress, amountInt);
-        const tx3 = yield approveTx.wait();
-        console.log(tx3);
-        console.log(" approved to spend contract coin ");
-        console.log('contract address: ' + contractAddress);
+        //console.log(" user balance " + ethers.parseUnits(userBalance.toString(), decimalNo));
+        //const approveTx = await tokenContract1.approve(contractAddress, amountInt);
+        //const tx3 = await approveTx.wait();
+        //console.log(tx3);
+        //console.log(" approved to spend contract coin ");
+        //console.log('contract address: ' + contractAddress)
         // Send transaction
-        console.log('processing...');
+        console.log('processing...' + depositAmt + " " + amountInt);
         //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
-        const tx = yield contract.createLoan(ref, tokenAddress, merchantAddress, amountInt, feeInt, depositAmt, borrower);
+        const tx = yield contract.createLoan(ref, tokenContractAddress, ethers_1.ethers.getAddress(merchantAddress), amountInt, feeInt, depositAmt, borrower);
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
         const userBalance2 = yield tokenContract1.balanceOf(publicAddress);
         console.log("USDT user balance 2 " + userBalance2);
         console.log("USDT user balance 2 " + ethers_1.ethers.parseUnits(userBalance2.toString(), 18));
-        console.log("USDT user balance 1 " + userBalance);
-        if (userBalance2 < userBalance) {
-            console.log('user balance reduce');
-        }
         const txDetail = yield provider.getTransaction(tx.hash);
         console.log("Raw tx data:", txDetail.data);
         console.log(`\n🎉 Loan successfully created! Ref: `);
@@ -233,7 +262,7 @@ function ethCreateLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx,
         console.log('bal ' + balance + ' ' + decimals);
         const bal = ethers_1.ethers.formatUnits(balance, decimals);
         console.log(`Vault Token Balance: ${bal}`);
-        return { success: true, message: txDetail, txId: tx.hash };
+        return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
 function ethRepayLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx) {
@@ -246,6 +275,8 @@ function ethRepayLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx) 
         const publicAddress = yield wallet.getAddress();
         console.log('amount ' + amount + " ref " + ref);
         console.log("Public address:", publicAddress);
+        console.log("contract address:", tokenAddress);
+        console.log("lending contract address:", contractAddress);
         const tokenContractAddress = ethers_1.ethers.getAddress(tokenAddress); //USDT or USDC
         const tokenContract1 = new ethers_1.ethers.Contract(tokenContractAddress, ERC20_ABI, wallet);
         const decimalNo = yield tokenContract1.decimals();
@@ -286,7 +317,7 @@ function ethRepayLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx) 
         console.log('bal ' + balance + ' ' + decimals);
         const bal = ethers_1.ethers.formatUnits(balance, decimals);
         console.log(`Vault Token Balance: ${bal}`);
-        return { success: true, message: txDetail, txId: tx.hash };
+        return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
 //function disburseLoanToMerchant(bytes32 ref) external onlyCreditOfficer
@@ -301,15 +332,22 @@ function ethDisburseLoanToMerchant(key, rpcUrl, contractAddress, tokenAddress) {
         console.log("Public address:", publicAddress);
         const tokenContractAddress = ethers_1.ethers.getAddress(tokenAddress); //USDT or USDC
         const tokenContract1 = new ethers_1.ethers.Contract(tokenContractAddress, ERC20_ABI, wallet);
+        const vaultBalance1 = yield tokenContract1.balanceOf(contractAddress);
+        console.log("vault balance " + vaultBalance1);
         console.log('contract address: ' + contractAddress);
+        console.log('contract address: ' + tokenContractAddress);
         // Send transaction
         console.log('processing...');
         //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
         //function repayLoan(bytes32 ref, uint256 amount) external
+        //const response = await contract.getMerchantFund(publicAddress,tokenAddress);
+        //console.log(' merchant fund ' + response);
         const tx = yield contract.withdrawMerchantFund(tokenAddress);
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
+        const vaultBalance2 = yield tokenContract1.balanceOf(contractAddress);
+        console.log("vault balance " + vaultBalance2);
         return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
@@ -321,15 +359,25 @@ function ethPostRates(key, rpcUrl, contractAddress, lenderFee, platformFee, depo
         const contract = new ethers_1.ethers.Contract(contractAddress, ABI, wallet);
         const publicAddress = yield wallet.getAddress();
         console.log("Public address:", publicAddress);
-        const platformFeeInt = ethers_1.ethers.parseUnits(platformFee, 18);
-        const lenderFeeInt = ethers_1.ethers.parseUnits(lenderFee, 18);
-        const depositAmt = ethers_1.ethers.parseUnits(depositContribution, 18);
+        //const platformFeeInt = ethers.parseUnits(platformFee, 18); 
+        //const lenderFeeInt = ethers.parseUnits(lenderFee, 18); 
+        //const depositAmt = ethers.parseUnits(depositContribution, 18); 
+        const SCALE = 1e6;
+        const platformFeeInt = Math.floor(Number(platformFee) * SCALE);
+        const lenderFeeInt = Math.floor(Number(lenderFee) * SCALE);
+        const depositAmtInt = Math.floor(Number(depositContribution) * SCALE);
+        if (platformFeeInt + lenderFeeInt > SCALE) {
+            return { success: false, message: 'Invalid fee setup — total exceeds 100%', txId: '' };
+        }
         // Send transaction
-        console.log('processing post rates...');
+        console.log('processing post rates...' + platformFeeInt + " " + lenderFeeInt + " " + depositAmtInt);
         //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
         //function repayLoan(bytes32 ref, uint256 amount) external
-        const tx = yield contract.setFeeRate(platformFeeInt, lenderFeeInt);
-        const tx2 = yield contract.setDepositContributionPercent(depositAmt);
+        const tx = yield contract.setFeeRate(platformFeeInt, lenderFeeInt, {
+            maxFeePerGas: ethers_1.ethers.parseUnits('50', 'gwei'), // must be > previous tx
+            maxPriorityFeePerGas: ethers_1.ethers.parseUnits('10', 'gwei'),
+        });
+        const tx2 = yield contract.setDepositContributionPercent(depositAmtInt);
         console.log(`🚀 Transaction sent: ${tx.hash}     ${tx2.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
@@ -402,6 +450,28 @@ function getLenderStats(tokenAddress, lender, rpcUrl, contractAddress) {
         //creator: offer.creator,
         };
         console.log("📦 Protocol Stats:", result);
+        return result;
+    });
+}
+function getLoanData(refx, rpcUrl, contractAddress) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const ref = (0, ethers_2.keccak256)((0, ethers_2.toUtf8Bytes)(refx));
+        const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
+        console.log('ref ' + ref + ' ' + refx);
+        const vault = new ethers_1.ethers.Contract(contractAddress, ABI, provider);
+        // 3️⃣ Call the view function
+        const response = yield vault.getLoanData(ref);
+        const [borrower, token, principal, outstanding, paid] = response;
+        console.log(response);
+        const p = ethers_1.ethers.formatUnits(principal.toString(), 6);
+        const o = ethers_1.ethers.formatUnits(outstanding.toString(), 6);
+        const paid1 = ethers_1.ethers.formatUnits(paid.toString(), 6);
+        // 4️⃣ Format response for readability
+        const result = { success: true, message: 'SUCCESS',
+            principal: p, outstanding: o,
+            totalPaid: paid1
+        };
+        console.log("📦 loan data :", result);
         return result;
     });
 }

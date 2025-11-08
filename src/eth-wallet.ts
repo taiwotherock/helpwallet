@@ -1,4 +1,6 @@
-import { Wallet,Mnemonic, HDNodeWallet } from "ethers";
+
+import { ethers } from "ethers";
+import { Wallet,HDNodeWallet, JsonRpcProvider, Contract, keccak256, toUtf8Bytes } from "ethers";
 
 
 
@@ -24,3 +26,19 @@ export async function createWalletWithPhraseEth(chain: string, symbol: string) {
     return response;
   
 }
+
+export async function ethGasBalanceByKey(key: string,
+  rpcUrl: string) {
+    // Generate unique reference
+
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const wallet = new ethers.Wallet(key!, provider);
+    const publicAddress = await wallet.getAddress();
+    console.log("Public address:", publicAddress);
+    
+    const balanceWei = await provider.getBalance(publicAddress);
+    console.log('balanceWei: ' + balanceWei.toString())
+    const balanceEth = Number(ethers.formatEther(balanceWei.toString()));
+    return {success: true, message: publicAddress, balance:balanceEth  };
+    
+  }

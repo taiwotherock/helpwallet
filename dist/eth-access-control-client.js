@@ -25,10 +25,8 @@ const PRIVATE_KEY = process.env.B_KEY; // Admin wallet private key
 const CONTRACT_ADDRESS = process.env.ACCESS_CONTROL_CONTRACT_ADDRESS; // Deployed contract address
 // ====== ABI (minimal) ======
 const ABI = [
-    "function grantRole(bytes32 role, address account) external",
-    "function revokeRole(bytes32 role, address account) external",
+    "function addCreditOfficer(address account) external",
     "function isCreditOfficer(address account) public view returns (bool)",
-    "function isKeeper(address account) public view returns (bool) ",
     "function isAdmin(address account) public view returns (bool)"
 ];
 // ====== Constants ======
@@ -42,24 +40,24 @@ function addAdmin(key, rpcUrl, contractAddress, address, role) {
     return __awaiter(this, void 0, void 0, function* () {
         const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
         const wallet = new ethers_1.ethers.Wallet(key, provider);
+        console.log("contract address: " + contractAddress);
         const contract = new ethers_1.ethers.Contract(contractAddress, ABI, wallet);
         const role2 = (0, ethers_2.keccak256)((0, ethers_2.toUtf8Bytes)(role));
-        console.log("grant role " + role + role2);
-        let result = yield contract.isAdmin(address);
-        console.log(result);
-        if (result) {
-            return { success: true, message: "SUCCESS", txId: '' };
+        console.log("grant role " + role + ' ' + role2);
+        let result = false;
+        if (role == 'CREDIT_OFFICER') {
+            //addCreditOfficer
+            result = yield contract.isCreditOfficer(address);
+            console.log(result);
+            if (result) {
+                return { success: true, message: "SUCCESS", txId: '' };
+            }
+            const tx = yield contract.addCreditOfficer(address);
+            console.log(`Transaction sent: ${tx.hash}`);
+            yield tx.wait();
+            console.log(`credit role granted to ${address}`);
+            return { success: true, message: 'SUCCESS', txId: tx.hash };
         }
-        result = yield contract.isCreditOfficer(address);
-        console.log(result);
-        if (result) {
-            return { success: true, message: "SUCCESS", txId: '' };
-        }
-        const tx = yield contract.grantRole(role2, address);
-        console.log(`Transaction sent: ${tx.hash}`);
-        yield tx.wait();
-        console.log(`Admin role granted to ${address}`);
-        return { success: true, message: 'SUCCESS', txId: tx.hash };
     });
 }
 /**

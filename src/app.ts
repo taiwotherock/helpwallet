@@ -26,7 +26,14 @@ import { depositToVault,withdrawVault,whitelistOrBlackVaultUser,
 import {internalTransfer,ethTranStatus} from './eth-swap'
 import {addAdmin,removeAdmin,checkIsAdmin} from './eth-access-control-client'
 import {ethCreateLoan,ethDepositIntoVault,ethRepayLoan,ethDisburseLoanToMerchant,
-  ethWithdrawFromVault,updateWhiteOrBlackListLend,ethPostRates} from './eth-lending'
+  ethWithdrawFromVault,updateWhiteOrBlackListLend,ethPostRates,getLoanData} from './eth-lending'
+
+import { createOffer,releaseOffer,markOfferPaid,
+  getVaultTokenBalance,getWalletBalance,
+  pickOffer,updateWhiteOrBlackList,fetchOfferStatus } from './eth-escrow-vault'
+
+  import {ethGasBalanceByKey} from './eth-wallet'
+  
 
 
 
@@ -65,13 +72,15 @@ app.post('/create-wallet', async (req, res) => {
       const chain = req.query.chain
       const symbol = req.query.symbol
       var response : any;
-      if(symbol == 'USDC')
+      /*if(symbol == 'USDC')
       {
         response = await createWallet(req.query.name,'',chain); 
         res.json(response) 
        
       }
-      else if(chain == 'TRON') {
+      else*/
+      
+      if(chain == 'TRON') {
         response = await createWalletWithPhrase(req.query.username,req.query.entityCode,req.query.name);
         res.json(response)
       }
@@ -144,6 +153,7 @@ app.post('/create-wallet', async (req, res) => {
       const { walletAddress,tokenAddress,rpcUrl,decimalNo,chain,symbol} = req.body;
       
       console.log('bal22 ' + walletAddress + ' ' + tokenAddress + " " + chain + " " + symbol)
+      console.log('rpc: ' + rpcUrl);
       var response : any;
       if(chain == 'TRON')
       {
@@ -167,6 +177,40 @@ app.post('/create-wallet', async (req, res) => {
       console.log(`Error fetch balance `)
       console.log(error)
       res.status(500).json({success:false,error:'error fetch balance ' + error})
+    }
+  })
+
+  app.post('/gas-balance', async (req, res) => {
+    try {
+  
+      if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,error:'Invalid authentication API key or token '})
+        return;
+      }
+
+      const { walletAddress,rpcUrl,chain,symbol} = req.body;
+      
+      console.log('bal22 '  + " " + chain + " " + symbol)
+      console.log('rpc: ' + rpcUrl);
+      var response : any;
+      if(chain == 'TRON')
+      {
+        
+      }
+      else {
+        response = await ethGasBalanceByKey(walletAddress,rpcUrl);
+      }
+      
+      res.json(response)
+    
+  
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error gas balance `)
+      console.log(error)
+      res.status(500).json({success:false,error:'error gas balance ' + error})
     }
   })
 
@@ -252,19 +296,20 @@ app.post('/create-wallet', async (req, res) => {
         response = await tranStatus(txId);
         res.json(response)
       }
-      else if(symbol == 'USDC' && txId.indexOf('0x') < 0)
-      {
-         response = await transferQueryUSDC(txId,symbol)
-         console.log(response)
-
-         res.json(response)
-      }
       else 
       {
           console.log('eth api route ') 
           response = await fetchTransactionDetailEth(txId, symbol, chain, rpcUrl);
           res.json(response)
       }
+
+      /*else if(symbol == 'USDC' && txId.indexOf('0x') < 0)
+      {
+         response = await transferQueryUSDC(txId,symbol)
+         console.log(response)
+
+         res.json(response)
+      }*/
 
       //res.json(successResponse(response))
     } catch (error) {
@@ -631,14 +676,14 @@ app.post('/create-wallet', async (req, res) => {
     try {
   
      
-      const { key, amount,ref,chain,rpcUrl,contractAddress,tokenAddress} = req.body;
+      const { key, amount,ref,chain,rpcUrl,contractAddress,tokenToBorrow} = req.body;
       console.log("repay-loan: "  + " " + ref);
     
       let response : any;
       if(chain == 'TRON')
          response = await repayLoan(key,ref,amount);
       else 
-         response = await ethRepayLoan(key,amount,rpcUrl,contractAddress,tokenAddress,ref);
+         response = await ethRepayLoan(key,amount,rpcUrl,contractAddress,tokenToBorrow,ref);
       
       console.log(response);
       res.json(response)
@@ -695,8 +740,8 @@ app.post('/create-wallet', async (req, res) => {
   
      
       const { key, tokenToBorrow,amount,chain,rpcUrl,contractAddress} = req.body;
-      console.log("deposit-into-lend-vault: "  + " " + tokenToBorrow);
-      console.log("amount: "  + " " + amount);
+      console.log("deposit-into-lend-vault: "  + " " + tokenToBorrow + " " + contractAddress);
+      console.log("amount: "  + " " + amount + " " + chain);
     
       let response : any;
       
@@ -769,7 +814,7 @@ app.post('/create-wallet', async (req, res) => {
       res.json(response)
  
     } catch (error) {
-      console.log(`Error: release offer ` + error.message)
+      console.log(`Error: whtelist error ` + error.message)
       res.status(500).json({success:false, message: error.message})
     }
   })
@@ -830,6 +875,241 @@ app.post('/create-wallet', async (req, res) => {
       res.status(500).json({success:false, message: error.message})
     }
   })
+
+   app.get('/check-role/:address', async (req, res) => {
+    try {
+  
+      if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,message:'Invalid authentication API key or token '})
+        return;
+      }
+      const rpcUrl = req.headers['x-rpc-url'] as string;
+      console.log(rpcUrl);
+      const response = await checkIsAdmin(req.params.address,rpcUrl,req.query.contractAddress as string);
+   
+  
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+     console.log(`Error: access control check role ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  });
+
+  app.post('/create-offer', async (req, res) => {
+    try {
+  
+     
+      //"fiatSymbol":"NGN","fiatAmount":"1486","fiatTokenRate":"1486.000000","isBuy":true,"usdtAmt":"1.0000"
+      const { key, token,counterparty,fiatSymbol,fiatAmount,fiatTokenRate,isBuy,usdtAmt,ref,contractAddress,rpcUrl} = req.body;
+      console.log("counterparty: "  + " " + counterparty);
+      console.log("rate: "  + " " + fiatTokenRate);
+      console.log("is buy: "  + " " + isBuy + " " + fiatAmount);
+      const response = await createOffer(key,counterparty,token,fiatSymbol,fiatAmount,
+        fiatTokenRate,isBuy,usdtAmt,ref,contractAddress,rpcUrl);
+
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error: create offer ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+   app.post('/release-offer', async (req, res) => {
+    try {
+  
+     
+      const { key, refNo,token,contractAddress,rpcUrl} = req.body;
+      console.log("refNo: "  + " " + refNo);
+      const response = await releaseOffer(key,refNo,token,contractAddress,rpcUrl);
+
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: release offer ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/pick-offer', async (req, res) => {
+    try {
+  
+     
+      const { key, refNo,tokenAmount,isBuy,contractAddress,rpcUrl} = req.body;
+      console.log("refNo: "  + " " + refNo);
+      const response = await pickOffer(key,refNo,contractAddress,rpcUrl);
+
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: pick offer ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/mark-paid', async (req, res) => {
+    try {
+  
+     
+      const { key, refNo,contractAddress,rpcUrl} = req.body;
+      console.log("refNo: "  + " " + refNo);
+      const response = await markOfferPaid(key,refNo,contractAddress,rpcUrl);
+
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: release offer ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/white-black-status', async (req, res) => {
+    try {
+  
+      if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,message:'Invalid authentication API key or token '})
+        return;
+      }
+     
+      const { key, address, whiteOrBlack,status,ctype,rpcUrl,contractAddress} = req.body;
+      console.log("address: "  + " " + address + ' ' + ctype);
+      let response : any;
+      
+      if(ctype == 'ESCROW')
+        response = await updateWhiteOrBlackList(key,address,status,whiteOrBlack,contractAddress,rpcUrl);
+      else 
+        response = await updateWhiteOrBlackListLend(key,address,status,whiteOrBlack,rpcUrl,contractAddress);
+
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: release offer ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/vault-balance', async (req, res) => {
+    try {
+  
+     
+      const { token, contractAddr,rpcUrl} = req.body;
+      console.log("refNo: "  + " " + token);
+      const response = await getVaultTokenBalance(token,contractAddr,rpcUrl);
+
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: vault balance ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+
+
+  app.post('/fetch-loan-data', async (req, res) => {
+    try {
+  
+     
+      const { ref, contractAddress,rpcUrl} = req.body;
+      console.log("fetch loan data refNo: "  + " " + ref);
+      const response = await getLoanData(ref,rpcUrl,contractAddress);
+     
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: fetch loan data ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+
+
+   app.post('/testoffer', async (req, res) => {
+    try {
+  
+     if(!validateToken(req))
+      {
+        console.log(`Invalid authentication API key or token `)
+        res.status(500).json({success:false,message:'Invalid authentication API key or token '})
+        return;
+      }
+      /*
+        1. Set contract 
+        2. Add admin control
+        3. Add white list control
+        4. Create offer
+        
+      */
+
+      const { key, key2, token,counterparty,fiatSymbol,fiatAmount,fiatTokenRate,isBuy,usdtAmt,
+        ref,contractAddress,address1,address2,rpcUrl} = req.body;
+      console.log("counterparty: "  + " " + counterparty);
+      console.log("rate: "  + " " + fiatTokenRate);
+      console.log("is buy: "  + " " + isBuy + " " + fiatAmount);
+
+
+       let response = await fetchBalanceEth(address1,rpcUrl);
+       console.log('baleth ' + address1 + " " + response)
+
+       response = await fetchBalanceEth(address2,rpcUrl);
+       console.log('baleth ' + address2 + " " + response)
+
+       response = await fetchTokenBalance(token, address1,rpcUrl,6);
+       console.log('balusd ' + address1 + " " + response)
+      response = await fetchTokenBalance(token, address2,rpcUrl,6);
+       console.log('balusd ' + address2 + " " + response);
+
+       const resp1 = await updateWhiteOrBlackList(key,address1,true,'W',contractAddress,rpcUrl);
+       console.log(resp1)
+
+       const resp2 = await updateWhiteOrBlackList(key,address2,true,'W',contractAddress,rpcUrl);
+       console.log(resp2)
+   
+          
+       const response55 = await createOffer(key,counterparty,token,fiatSymbol,fiatAmount,
+        fiatTokenRate,isBuy,usdtAmt,ref,contractAddress,rpcUrl);
+        console.log(response55);
+
+        console.log(await fetchOfferStatus(ref,contractAddress,rpcUrl));
+
+        let response2 : any;
+        if(response55.success) {
+          response2 = await pickOffer(key2,ref,contractAddress,rpcUrl);
+          console.log(response2);
+        }
+
+        console.log(await fetchOfferStatus(ref,contractAddress,rpcUrl));
+
+        let response3 : any;
+         if(response2.success) {
+            response3 = await markOfferPaid(key2,ref,contractAddress,rpcUrl)
+            console.log(response3)
+         }
+
+         if(response3.success) {
+          let response4 = await releaseOffer(key,ref,token,contractAddress,rpcUrl)
+          console.log(response4)
+        }
+      
+      //console.log(response);
+      //res.json(response)
+    
+    } catch (error) {
+      console.log(`Error: error  ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+
+
+
 
 
   function validateToken(req: any)

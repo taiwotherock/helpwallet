@@ -8,7 +8,7 @@ dotenv.config();
 // ====== Config ======
 const RPC_URL = process.env.B_RPC_URL; // Replace with your network RPC
 const PRIVATE_KEY = process.env.B_KEY; // Admin wallet private key Seller's private key
-const CONTRACT_ADDRESS = ethers.getAddress(process.env.ESCROW_VAULT_CONTRACT_ADDRESS); // Deployed TradeEscrowVault contract
+//const CONTRACT_ADDRESS = ethers.getAddress(process.env.ESCROW_VAULT_CONTRACT_ADDRESS); // Deployed TradeEscrowVault contract
 
 // ====== ABI (minimal) ======
 const ABI = [
@@ -35,7 +35,7 @@ const ERC20_ABI = [
 ];
 
 // ====== Provider & Wallet ======
-const provider = new ethers.JsonRpcProvider(RPC_URL);
+
 //const wallet = new ethers.Wallet(PRIVATE_KEY!, provider);
 //const contract = new ethers.Contract(CONTRACT_ADDRESS!, ABI, wallet);
 
@@ -53,12 +53,15 @@ export async function createOffer(key: string,
   fiatToTokenRate: string,
   isBuy: boolean = false,
   usdtAmt: string,
-  refx: string
+  refx: string,
+  contractAddress: string,
+  rpcUrl: string
 ) {
     // Generate unique reference
 
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(key!, provider);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS!, ABI, wallet);
+    const contract = new ethers.Contract(contractAddress!, ABI, wallet);
     const publicAddress = await wallet.getAddress();
 
     console.log('fiat-amount ' + fiatAmount)
@@ -90,9 +93,9 @@ export async function createOffer(key: string,
      console.log(`TokenAmount: ${usdtAmt2}`);
     console.log(`Fiat: ${fiatAmount} ${fiatSymbol} @ rate ${fiatToTokenRate}`);
     console.log(`Fiat: ${fiatAmountInt} ${fiatSymbol} @ rate ${rateScaled}`);
-    console.log('contract address: ' + CONTRACT_ADDRESS)
+    console.log('contract address: ' + contractAddress)
     
-    const usdtAddress = ethers.getAddress(process.env.USDC_CONTRACT_ADDRESS);
+    const usdtAddress = ethers.getAddress(token); //process.env.USDC_CONTRACT_ADDRESS);
     const usdtContract = new ethers.Contract(usdtAddress, ERC20_ABI, wallet);
     console.log('usd contract: ' + usdtAddress);
 
@@ -117,9 +120,9 @@ export async function createOffer(key: string,
          return {success: false, message: 'Insufficient Gas Fee ' + nativeBalance, txId: ''};
      }
 
-     console.log("Escrow Contract " + CONTRACT_ADDRESS);
+     console.log("Escrow Contract " + contractAddress);
 
-    const approveTx = await usdtContract.approve(CONTRACT_ADDRESS, usdtAmt2);
+    const approveTx = await usdtContract.approve(contractAddress, usdtAmt2);
     const tx3 = await approveTx.wait();
     console.log(tx3);
     console.log("USDT approved to spend USDT ");
@@ -179,11 +182,11 @@ export async function createOffer(key: string,
     console.log("Raw tx data:", txDetail.data);
     console.log(`\n🎉 Offer successfully created! Ref: ${ref}\n`);
 
-    const ethBalance = await provider.getBalance(CONTRACT_ADDRESS);
+    const ethBalance = await provider.getBalance(contractAddress);
     console.log(`Vault ETH balance: ${ethers.formatEther(ethBalance)} ETH`);
   
     const tokenContract = new ethers.Contract(token, ERC20_ABI, provider);
-    const balance: bigint = await tokenContract.balanceOf(CONTRACT_ADDRESS);
+    const balance: bigint = await tokenContract.balanceOf(contractAddress);
     const decimals: number = await tokenContract.decimals();
     console.log('bal ' + balance + ' ' + decimals);
     const bal = ethers.formatUnits(balance, decimals);
@@ -196,23 +199,25 @@ export async function createOffer(key: string,
 
 // ====== Main: Release Offer ======
 export async function releaseOffer(key: string,
-  refNo: string, token: string
+  refx: string, token: string, contractAddress: string,rpcUrl:string
 ) {
     
 
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(key!, provider);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS!, ABI, wallet);
+    const contract = new ethers.Contract(contractAddress!, ABI, wallet);
     const publicAddress = await wallet.getAddress();
 
     const tokenContract = new ethers.Contract(ethers.getAddress(token), ERC20_ABI, provider);
-    const balance: bigint = await tokenContract.balanceOf(CONTRACT_ADDRESS);
+    const balance: bigint = await tokenContract.balanceOf(contractAddress);
     const decimals: number = await tokenContract.decimals();
     console.log('bal ' + balance + ' ' + decimals);
     const bal = ethers.formatUnits(balance, decimals);
     console.log(`Vault Token Balance: ${bal}`);
 
     console.log("Public address:", publicAddress);
-    console.log(`\n📦 releasing offer...`);
+    const refNo = keccak256(toUtf8Bytes(refx));
+    console.log(`\n📦 releasing offer...` + refNo);
     
   
      // Send transaction
@@ -223,7 +228,7 @@ export async function releaseOffer(key: string,
     const receipt = await tx.wait();
     console.log(`✅ Mined in block ${receipt.blockNumber}`);
 
-     const balance1: bigint = await tokenContract.balanceOf(CONTRACT_ADDRESS);
+     const balance1: bigint = await tokenContract.balanceOf(contractAddress);
     const decimals1: number = await tokenContract.decimals();
     console.log('bal ' + balance1 + ' ' + decimals1);
     const bal1 = ethers.formatUnits(balance1, decimals1);
@@ -239,16 +244,18 @@ export async function releaseOffer(key: string,
 
 // ====== Main: Release Offer ======
 export async function markOfferPaid(key: string,
-  refNo: string
+  refx: string, contractAddress: string, rpcUrl: string
 ) {
     
 
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(key!, provider);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS!, ABI, wallet);
+    const contract = new ethers.Contract(contractAddress!, ABI, wallet);
     const publicAddress = await wallet.getAddress();
 
     console.log("Public address:", publicAddress);
-    console.log(`\n📦 mark paid offer...`);
+    const refNo = keccak256(toUtf8Bytes(refx));
+    console.log(`\n📦 mark paid offer...` + refNo);
     
   
      // Send transaction
@@ -268,18 +275,20 @@ export async function markOfferPaid(key: string,
 
 // ====== Main: Release Offer ======
 export async function pickOffer(key: string,
-  refNo: string, isBuy: boolean, tokenAmount: string
+  refx: string,contractAddress: string, rpcUrl:string
 ) {
     
 
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(key!, provider);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS!, ABI, wallet);
+    const contract = new ethers.Contract(contractAddress!, ABI, wallet);
     const publicAddress = await wallet.getAddress();
 
     console.log("Public address:", publicAddress);
-    console.log(`\n📦 pick offer...`);
+    const refNo = keccak256(toUtf8Bytes(refx));
+    console.log(`\n📦 pick offer...` + refNo);
 
-    const usdtAddress = ethers.getAddress(process.env.USDT_CONTRACT_ADDRESS);
+    /*const usdtAddress = ethers.getAddress(token);
     const usdtContract = new ethers.Contract(usdtAddress, ERC20_ABI, wallet);
 
     const userBalance2: bigint = await usdtContract.balanceOf(publicAddress);
@@ -287,20 +296,21 @@ export async function pickOffer(key: string,
      const decimals: number = await usdtContract.decimals();
      const availBalance = ethers.formatUnits(userBalance2, decimals);
     console.log("USDT user balance 2 " + availBalance + " " + tokenAmount);
+    */
 
-    if(Number(availBalance) < Number(tokenAmount) && isBuy)
+    /*if(Number(availBalance) < Number(tokenAmount) && isBuy)
     {
         return {success: false, message: "Insufficient token balance" }
-    }
+    }*/
 
-    if(isBuy)
+    /*if(isBuy)
     {
         const usdtAmt2 = ethers.parseUnits(tokenAmount, 18); 
-        const approveTx = await usdtContract.approve(CONTRACT_ADDRESS, usdtAmt2);
+        const approveTx = await usdtContract.approve(contractAddress, usdtAmt2);
         const tx3 = await approveTx.wait();
         console.log(tx3);
         console.log("USDT approved to spend USDT ");
-    }
+    }*/
   
        // Send transaction
     const tx = await contract.pickOffer(refNo);
@@ -318,12 +328,13 @@ export async function pickOffer(key: string,
 
 
 
-export async function getVaultTokenBalance(token: string, contractAddr: string) {
+export async function getVaultTokenBalance(token: string, contractAddr: string,rpcUrl:string) {
 
   console.log('contract addr ' + contractAddr);
   console.log('token addr ' + token);
 
-    const ethBalance = await provider.getBalance(ethers.getAddress(CONTRACT_ADDRESS));
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const ethBalance = await provider.getBalance(ethers.getAddress(token));
   console.log(`Vault ETH balance: ${ethers.formatEther(ethBalance)} ETH`);
   
     const tokenContract = new ethers.Contract(ethers.getAddress(token), ERC20_ABI, provider);
@@ -369,13 +380,14 @@ export async function getWalletBalance(token: string, publicAddress:
 }
 
 export async function updateWhiteOrBlackList(key:string,address:
-     string,status: boolean, whiteOrBlack: string) {
+     string,status: boolean, whiteOrBlack: string, contractAddress: string,rpcUrl:string) {
 
      // Send transaction
 
-     console.log("contract address:", CONTRACT_ADDRESS);
+     console.log("contract address:", contractAddress);
+     const provider = new ethers.JsonRpcProvider(rpcUrl);
      const wallet = new ethers.Wallet(key!, provider);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS!, ABI, wallet);
+    const contract = new ethers.Contract(contractAddress!, ABI, wallet);
     const publicAddress = await wallet.getAddress();
 
     console.log("Public address:", publicAddress);
@@ -399,18 +411,21 @@ export async function updateWhiteOrBlackList(key:string,address:
     
 }
 
-export async function fetchOfferStatus(ref: string) {
+export async function fetchOfferStatus(ref: string, contractAddress: string, rpcUrl:string) {
     
+
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
 
     const vaultAbi: string[] = [
   "function getOffer(bytes32 ref) view returns (address creator, address counterparty, address token, bool isBuy, uint32 expiry, bytes3 fiatSymbol, uint64 fiatAmount, uint64 fiatToTokenRate, bool appealed, bool paid, bool released, uint256 tokenAmount)"
 ];
     const fetchABI ='{"inputs":[{"internalType":"bytes32","name":"ref","type":"bytes32"}],"name":"getOffer","outputs":[{"internalType":"address","name":"creator","type":"address"},{"internalType":"address","name":"counterparty","type":"address"},{"internalType":"address","name":"token","type":"address"},{"internalType":"bool","name":"isBuy","type":"bool"},{"internalType":"uint32","name":"expiry","type":"uint32"},{"internalType":"bytes3","name":"fiatSymbol","type":"bytes3"},{"internalType":"uint64","name":"fiatAmount","type":"uint64"},{"internalType":"uint64","name":"fiatToTokenRate","type":"uint64"},{"internalType":"bool","name":"appealed","type":"bool"},{"internalType":"bool","name":"paid","type":"bool"},{"internalType":"bool","name":"released","type":"bool"},{"internalType":"uint256","name":"tokenAmount","type":"uint256"}],"stateMutability":"view","type":"function"}'
    // 2️⃣ Create contract instance
-  const vault = new ethers.Contract(CONTRACT_ADDRESS, vaultAbi, provider);
+  const vault = new ethers.Contract(contractAddress, vaultAbi, provider);
 
   // 3️⃣ Call the view function
-  const offer = await vault.getOffer(ref);
+  const refNo = keccak256(toUtf8Bytes(ref));
+  const offer = await vault.getOffer(refNo);
   console.log(offer);
 
   // 4️⃣ Format response for readability

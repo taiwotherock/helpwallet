@@ -87,13 +87,13 @@ export async function fetchTransactionDetailEth(txId: string, symbol:string, cha
 
     console.log(txReceipt);
     //const gasDecimal = parseInt(gasHex, 16);
-    console.log('gas fee ' + BigInt(txReceipt.gasPrice).toString())
+    //console.log('gas fee ' + BigInt(txReceipt.gasPrice).toString())
     console.log('input amt ' +txReceipt.input);
-    const amt = decodeUSDCAmountFromInput(txReceipt.input).toString()
+    const amt = 0; // decodeUSDCAmountFromInput(txReceipt.input).toString()
     console.log('amt ' +  amt)
 
     return {success:true,chain:chain,
-      txId: txId, fee: BigInt(txReceipt.gasPrice).toString(),
+      txId: txId, fee: '0', //BigInt(txReceipt.gasPrice).toString()
        toAddress: txReceipt.to,
       fromAddress: txReceipt.from,
       blockRefNo: txReceipt.blockHash,
@@ -105,7 +105,17 @@ export async function fetchTransactionDetailEth(txId: string, symbol:string, cha
    
     
   } catch (error) {
-    throw new Error(`Failed to fetch transaction : ${error}`);
+    //throw new Error(`Failed to fetch transaction : ${error}`);
+    return {success:false,chain:chain,
+      txId: txId, fee: '0', //BigInt(txReceipt.gasPrice).toString()
+       toAddress: '',
+      fromAddress: '',
+      blockRefNo: '',
+      symbol: symbol,
+      amount: 0, blockNumber: '',
+      blockTimestamp: '',
+      contractAddress: '', crDr:'',status: 'ERROR'
+     };
   }
 }
 
