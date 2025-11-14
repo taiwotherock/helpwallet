@@ -33,16 +33,21 @@ const PRIVATE_KEY = process.env.B_KEY; // Admin wallet private key Seller's priv
 const CONTRACT_ADDRESS = ethers_1.ethers.getAddress(process.env.ESCROW_VAULT_CONTRACT_ADDRESS); // Deployed TradeEscrowVault contract
 // ====== ABI (minimal) ======
 const ABI = [
-    "function depositToVault(address token, uint256 amount) external",
-    "function withdrawFromVault(address token, uint256 amount) external",
+    "function deposit(address token,uint256 amount) external returns (uint256 sharesMinted)",
+    "function withdraw(address token,uint256 sharesToBurn) external",
     "function setWhitelist(address user, bool status) external",
     "function repayLoan(bytes32 ref, uint256 amount) external",
     "function withdrawMerchantFund(address token) external",
-    "function setFeeRate(uint256 platformFeeRate, uint256 lenderFeeRate) external",
-    "function getMerchantFund(address merchant, address token) external",
+    "function setFeeRate(uint256 platformFeeRate, uint256 lenderFeeRate,uint256 bp) external",
     "function setDepositContributionPercent(uint256 depositContributionPercent) external",
-    "function createLoan(bytes32 ref,address token, address merchant, uint256 principal,uint256 fee, uint256 depositAmount, address borrower) external",
-    "function getLoanData(bytes32 ref) external view returns (address borrower, address token, uint256 principal, uint256 outstanding, uint256 totalPaid)",
+    "function markDefault(bytes32 ref) external",
+    "function writeOffLoan(bytes32 ref) external",
+    "function getMerchantFund(address merchant, address token) external",
+    "function withdrawPlatformFees(uint256 amount,address token) external",
+    "function createLoan(bytes32 ref,address token, address merchant, uint256 principal,uint256 fee, uint256 depositAmount, address borrower, uint256 maturitySeconds) external",
+    //"function createLoan(bytes32 ref,address token, address merchant, uint256 principal,uint256 fee, uint256 depositAmount, address borrower, uint256 maturitySeconds) external ",
+    "function getLoanData(bytes32 ref) external view returns (address borrower, address token, uint256 principal, uint256 outstanding, uint256 totalPaid,uint256 maturityDate,string memory status)",
+    "function fetchDashboardView() external view returns (uint256 noOfLoans, uint256 poolBalance, uint256 totalPrincipal, uint256 poolCashTotal, uint256 totalPaidToMerchant, uint256 totalReserveBalance, uint256 totalPlatformFees, uint256 totalLenderFees, uint256 totalPastDue)",
 ];
 // Minimal ERC20 ABI
 const ERC20_ABI = [
@@ -86,10 +91,10 @@ function ethDepositIntoVault(key, amount, rpcUrl, contractAddress, tokenAddress)
         ]);
     
         console.log("decimals allowance " + allowance + " " + decimals2);*/
-        const approveTx = yield usdtContract.approve(contractAddress, amountInt, {
-            maxFeePerGas: ethers_1.ethers.parseUnits('100', 'gwei'), // increase from your last
-            maxPriorityFeePerGas: ethers_1.ethers.parseUnits('30', 'gwei'),
-        });
+        const approveTx = yield usdtContract.approve(contractAddress, amountInt); /*, {
+          maxFeePerGas: ethers.parseUnits('100', 'gwei'),          // increase from your last
+          maxPriorityFeePerGas: ethers.parseUnits('30', 'gwei'),
+        });*/
         const tx3 = yield approveTx.wait();
         console.log(tx3);
         console.log("USDT approved to spend USDT ");
@@ -97,10 +102,10 @@ function ethDepositIntoVault(key, amount, rpcUrl, contractAddress, tokenAddress)
         // Send transaction
         //function depositToVault(address token, uint256 amount) external
         console.log('processing...' + amountInt);
-        const tx = yield contract.depositToVault(tokenAddress, amountInt, {
-            maxFeePerGas: ethers_1.ethers.parseUnits('40', 'gwei'), // increase from your last
-            maxPriorityFeePerGas: ethers_1.ethers.parseUnits('3', 'gwei'),
-        });
+        const tx = yield contract.deposit(tokenAddress, amountInt); /*, {
+          maxFeePerGas: ethers.parseUnits('40', 'gwei'),          // increase from your last
+          maxPriorityFeePerGas: ethers.parseUnits('3', 'gwei'),
+        });*/
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
@@ -153,7 +158,7 @@ function ethWithdrawFromVault(key, amount, rpcUrl, contractAddress, tokenAddress
         console.log('contract address: ' + contractAddress);
         // Send transaction
         console.log('processing...');
-        const tx = yield contract.withdrawFromVault(tokenAddress, amountInt);
+        const tx = yield contract.withdraw(tokenAddress, amountInt);
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
@@ -235,6 +240,7 @@ function ethCreateLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx,
         console.log('feeInt ' + fee);
         const amountInt = ethers_1.ethers.parseUnits(amount, decimalNo); // scaled to 1e18
         const depositAmt = ethers_1.ethers.parseUnits(depositAmount, decimalNo);
+        const maturityDate = Math.floor(Date.now() / 1000) + 60 * 24 * 60 * 60;
         const feeInt = ethers_1.ethers.parseUnits(fee, decimalNo);
         console.log('amt to send ' + amountInt);
         //console.log(" user balance " + ethers.parseUnits(userBalance.toString(), decimalNo));
@@ -245,8 +251,10 @@ function ethCreateLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx,
         //console.log('contract address: ' + contractAddress)
         // Send transaction
         console.log('processing...' + depositAmt + " " + amountInt);
+        console.log('processing...' + tokenContractAddress);
+        console.log('processing...' + maturityDate);
         //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
-        const tx = yield contract.createLoan(ref, tokenContractAddress, ethers_1.ethers.getAddress(merchantAddress), amountInt, feeInt, depositAmt, borrower);
+        const tx = yield contract.createLoan(ref, tokenContractAddress, ethers_1.ethers.getAddress(merchantAddress), amountInt, feeInt, depositAmt, borrower, maturityDate);
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
@@ -358,7 +366,7 @@ function ethDisburseLoanToMerchant(key, rpcUrl, contractAddress, tokenAddress) {
         return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
-function ethPostRates(key, rpcUrl, contractAddress, lenderFee, platformFee, depositContribution) {
+function ethPostRates(key, rpcUrl, contractAddress, lenderFee, platformFee, defaultRate, depositContribution) {
     return __awaiter(this, void 0, void 0, function* () {
         // Generate unique reference
         const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
@@ -369,18 +377,21 @@ function ethPostRates(key, rpcUrl, contractAddress, lenderFee, platformFee, depo
         //const platformFeeInt = ethers.parseUnits(platformFee, 18); 
         //const lenderFeeInt = ethers.parseUnits(lenderFee, 18); 
         //const depositAmt = ethers.parseUnits(depositContribution, 18); 
-        const SCALE = 1e6;
+        const SCALE = 100; // 1e6;
         const platformFeeInt = Math.floor(Number(platformFee) * SCALE);
         const lenderFeeInt = Math.floor(Number(lenderFee) * SCALE);
         const depositAmtInt = Math.floor(Number(depositContribution) * SCALE);
-        if (platformFeeInt + lenderFeeInt > SCALE) {
+        const defaultRateInt = Math.floor(Number(defaultRate) * SCALE);
+        if (platformFeeInt + lenderFeeInt > 10000) {
             return { success: false, message: 'Invalid fee setup — total exceeds 100%', txId: '' };
         }
         // Send transaction
         console.log('processing post rates...' + platformFeeInt + " " + lenderFeeInt + " " + depositAmtInt);
+        console.log('processing default rates...' + defaultRateInt);
+        let tx;
         //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
         //function repayLoan(bytes32 ref, uint256 amount) external
-        const tx = yield contract.setFeeRate(platformFeeInt, lenderFeeInt, {
+        tx = yield contract.setFeeRate(platformFeeInt, lenderFeeInt, defaultRateInt, {
             maxFeePerGas: ethers_1.ethers.parseUnits('50', 'gwei'), // must be > previous tx
             maxPriorityFeePerGas: ethers_1.ethers.parseUnits('10', 'gwei'),
         });

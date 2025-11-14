@@ -50,7 +50,6 @@ exports.fetchBalance = fetchBalance;
 const tronweb_1 = require("tronweb");
 const dotenv_1 = __importDefault(require("dotenv"));
 const CryptoJS = __importStar(require("crypto-js"));
-const tron_init_1 = require("./tron-init");
 dotenv_1.default.config();
 function createWalletWithPhrase(username, entityCode, name) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -69,13 +68,18 @@ function createWalletWithPhrase(username, entityCode, name) {
         return response;
     });
 }
-function fetchBalance(address) {
+function fetchBalance(key) {
     return __awaiter(this, void 0, void 0, function* () {
-        const tronWeb = (0, tron_init_1.initWeb)();
-        const result = yield tronWeb.trx.getBalance(address);
+        const tronWeb = new tronweb_1.TronWeb({
+            fullHost: process.env.TRON_NODE_URL,
+            privateKey: key,
+        });
+        const base58Address = tronWeb.address.fromPrivateKey(key);
+        console.log('Base58 (T...) address:', base58Address);
+        const result = yield tronWeb.trx.getBalance(base58Address);
         console.log("result: " + result);
         let balance = Number(result) / 1000000;
-        var response = { success: true, balance: balance, symbol: 'TRX' };
+        var response = { success: true, balance: balance, symbol: 'TRX', message: base58Address };
         return response;
     });
 }

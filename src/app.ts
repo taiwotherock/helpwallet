@@ -3,7 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv';
 import { createWalletWithPhrase, fetchBalance } from './tron-wallet'
 import { fetchContractBalance,fetchTransactionsByWallet } from './tron-contract-service'
-import { transfer } from './tron-transfer'
+import { transfer,transferTrx } from './tron-transfer'
 import { freezeTRX,getTronResources,unfreezeTRX } from './tron-freeze'
 import { approveBuyer } from './bpay-escrow-client'
 import { createWallet,fetchBalanceUSDC,transferQueryUSDC,transferUSDC } from './circle-wallet'
@@ -21,7 +21,7 @@ import { requestLoan,repay,liquidateLoanDue,approveAndDisburseLoan,getBorrowerOu
 import { depositCollateral,removeCollateral} from './tron-bfp-loanvault'
 import { depositToVault,withdrawVault,whitelistOrBlackVaultUser,
   merchantWithdrawFund,createLoan,repayLoan,setFeeAndRates,getBorrowerLoanOutstanding
-  ,fetchBorrowerLoans
+  ,getLoanDataTron
 } from './tron-bfp-vault-lend'
 import {internalTransfer,ethTranStatus} from './eth-swap'
 import {addAdmin,removeAdmin,checkIsAdmin} from './eth-access-control-client'
@@ -197,7 +197,7 @@ app.post('/create-wallet', async (req, res) => {
       var response : any;
       if(chain == 'TRON')
       {
-        
+           response = await fetchBalance(walletAddress);
       }
       else {
         response = await ethGasBalanceByKey(walletAddress,rpcUrl);
@@ -363,7 +363,10 @@ app.post('/create-wallet', async (req, res) => {
       
       if(chain == 'TRON')  
       {
-        response = await transfer(receiverAddress,contractAddress,amount,senderAddress,chain,symbol);
+        if(symbol == 'TRX') 
+           response = await transferTrx(receiverAddress,amount,key);
+        else 
+           response = await transfer(receiverAddress,contractAddress,amount,senderAddress,chain,symbol,key);
         
       }
       else
@@ -723,9 +726,9 @@ app.post('/create-wallet', async (req, res) => {
       }
       
       console.log(req.params.address)
-      const response = await fetchBorrowerLoans(req.params.address);
+      //const response = await fetchBorrowerLoans(req.params.address);
   
-      res.json(response)
+      //res.json(response)
     
       //res.json(successResponse(response))
     } catch (error) {
@@ -829,7 +832,7 @@ app.post('/create-wallet', async (req, res) => {
         return;
       }
 
-      const { key, platformFee,lenderFee,depositPercent,rpcUrl,contractAddress,chain} = req.body;
+      const { key, platformFee,lenderFee,depositPercent,rpcUrl,contractAddress,chain,defaultRate} = req.body;
       console.log("post-rates: "  + " " + depositPercent);
     
       let response : any;
@@ -837,7 +840,7 @@ app.post('/create-wallet', async (req, res) => {
       if(chain == 'TRON')
         response = await setFeeAndRates(key,platformFee,lenderFee,depositPercent);
       else 
-        response = await ethPostRates(key,rpcUrl,contractAddress,lenderFee,platformFee,depositPercent);
+        response = await ethPostRates(key,rpcUrl,contractAddress,lenderFee,platformFee,depositPercent,defaultRate);
 
       console.log(response);
       res.json(response)
@@ -1017,9 +1020,14 @@ app.post('/create-wallet', async (req, res) => {
     try {
   
      
-      const { ref, contractAddress,rpcUrl} = req.body;
+      const { ref, contractAddress,rpcUrl,chain} = req.body;
       console.log("fetch loan data refNo: "  + " " + ref);
-      const response = await getLoanData(ref,rpcUrl,contractAddress);
+
+      let response : any;
+      if(chain == 'TRON')
+        response = await getLoanDataTron(ref,contractAddress);
+      else
+        response = await getLoanData(ref,rpcUrl,contractAddress);
      
       res.json(response)
  

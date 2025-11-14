@@ -13,36 +13,59 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.transfer = transfer;
+exports.transferTrx = transferTrx;
 exports.transactionTsq = transactionTsq;
+const tronweb_1 = require("tronweb");
 const dotenv_1 = __importDefault(require("dotenv"));
-const tron_init_1 = require("./tron-init");
 dotenv_1.default.config();
-function transfer(receiverAddress, contractAddress, amount, senderAddress, chain, symbol) {
+function transfer(receiverAddress, contractAddress, amount, senderAddress, chain, symbol, key2) {
     return __awaiter(this, void 0, void 0, function* () {
-        const key = process.env.ENC_KEY;
+        //const key = process.env.ENC_KEY
         /*let pk = await fetchWalletKey(symbol,chain,senderAddress);
         console.log('pk ' + pk);
         let pkey1 = decryptData(pk,key)
         console.log('pkey1 ' + pkey1);*/
-        const tronWeb = (0, tron_init_1.initWeb)();
+        const tronWeb = new tronweb_1.TronWeb({
+            fullHost: process.env.TRON_NODE_URL,
+            privateKey: key2,
+        });
         const functionSelector = 'transfer(address,uint256)';
         const parameter = [{ type: 'address', value: receiverAddress }, { type: 'uint256', value: amount }];
         const tx = yield tronWeb.transactionBuilder.triggerSmartContract(contractAddress, functionSelector, {}, parameter);
+        console.log(tx);
         console.log('txx ' + tx + " " + JSON.stringify(tx));
         const signedTx = yield tronWeb.trx.sign(tx.transaction);
         const result = yield tronWeb.trx.sendRawTransaction(signedTx);
+        console.log(result);
         console.log('result ' + result + " " + JSON.stringify(result));
         console.log('result code ' + result.code);
         // const key = '9ca418335b389449499e2b83aff09210050aa70140977c996d21d4f16fd0f9b1'; // Use a secure key
         //const dataToEncrypt = 'Sensitive Information';
-        var response = { success: true, responsedata: result, responseCode: 'PP', responseMessage: '', txId: '', blockNumber: '',
-            blockTimeStamp: '' };
+        var response = { success: true, responsedata: result, responseCode: 'PP', message: 'PENDING', txId: '' };
+        return response;
+    });
+}
+function transferTrx(receiverAddress, amt, key2) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const tronWeb = new tronweb_1.TronWeb({
+            fullHost: process.env.TRON_NODE_URL,
+            privateKey: key2,
+        });
+        const amount = Number(amt) * 1e6; // unit in sun.
+        const tx = yield tronWeb.transactionBuilder.sendTrx(receiverAddress, amount);
+        const signedTx = yield tronWeb.trx.sign(tx);
+        const result = yield tronWeb.trx.sendRawTransaction(signedTx);
+        console.log(result);
+        //console.log('result code ' + result.code );
+        // const key = '9ca418335b389449499e2b83aff09210050aa70140977c996d21d4f16fd0f9b1'; // Use a secure key
+        //const dataToEncrypt = 'Sensitive Information';
+        var response = { success: true, responsedata: result, responseCode: 'PP', message: 'PENDING', txId: '' };
         return response;
     });
 }
 function transactionTsq(walletAddress, rpcUrl) {
     return __awaiter(this, void 0, void 0, function* () {
-        let rpcUrl2 = "https://nile.trongrid.io";
+        //let rpcUrl2 : any ="https://nile.trongrid.io"
         let queryParams = "/v1/accounts/" + walletAddress + "/transactions?limit=10";
         const headers = {
             'accept': 'application/json',
@@ -52,7 +75,7 @@ function transactionTsq(walletAddress, rpcUrl) {
             headers['TRON-PRO-API-KEY'] = this.apiKey;
         }
         // Make the API request
-        const response = yield fetch(rpcUrl2 + queryParams, {
+        const response = yield fetch(rpcUrl + queryParams, {
             method: 'GET',
             headers,
         });

@@ -166,6 +166,7 @@ app.post('/gas-balance', (req, res) => __awaiter(void 0, void 0, void 0, functio
         console.log('rpc: ' + rpcUrl);
         var response;
         if (chain == 'TRON') {
+            response = yield (0, tron_wallet_1.fetchBalance)(walletAddress);
         }
         else {
             response = yield (0, eth_wallet_2.ethGasBalanceByKey)(walletAddress, rpcUrl);
@@ -295,7 +296,10 @@ app.post('/transfer', (req, res) => __awaiter(void 0, void 0, void 0, function* 
   
         }*/
         if (chain == 'TRON') {
-            response = yield (0, tron_transfer_1.transfer)(receiverAddress, contractAddress, amount, senderAddress, chain, symbol);
+            if (symbol == 'TRX')
+                response = yield (0, tron_transfer_1.transferTrx)(receiverAddress, amount, key);
+            else
+                response = yield (0, tron_transfer_1.transfer)(receiverAddress, contractAddress, amount, senderAddress, chain, symbol, key);
         }
         else {
             response = yield (0, eth_swap_1.internalTransfer)(key, amount, receiverAddress, symbol, rpcUrl, contractAddress);
@@ -569,8 +573,8 @@ app.get('/borrower-details/:address', (req, res) => __awaiter(void 0, void 0, vo
             return;
         }
         console.log(req.params.address);
-        const response = yield (0, tron_bfp_vault_lend_1.fetchBorrowerLoans)(req.params.address);
-        res.json(response);
+        //const response = await fetchBorrowerLoans(req.params.address);
+        //res.json(response)
         //res.json(successResponse(response))
     }
     catch (error) {
@@ -649,13 +653,13 @@ app.post('/post-rates', (req, res) => __awaiter(void 0, void 0, void 0, function
             res.status(500).json({ success: false, message: 'Invalid authentication API key or token ' });
             return;
         }
-        const { key, platformFee, lenderFee, depositPercent, rpcUrl, contractAddress, chain } = req.body;
+        const { key, platformFee, lenderFee, depositPercent, rpcUrl, contractAddress, chain, defaultRate } = req.body;
         console.log("post-rates: " + " " + depositPercent);
         let response;
         if (chain == 'TRON')
             response = yield (0, tron_bfp_vault_lend_1.setFeeAndRates)(key, platformFee, lenderFee, depositPercent);
         else
-            response = yield (0, eth_lending_1.ethPostRates)(key, rpcUrl, contractAddress, lenderFee, platformFee, depositPercent);
+            response = yield (0, eth_lending_1.ethPostRates)(key, rpcUrl, contractAddress, lenderFee, platformFee, depositPercent, defaultRate);
         console.log(response);
         res.json(response);
     }
@@ -791,9 +795,13 @@ app.post('/vault-balance', (req, res) => __awaiter(void 0, void 0, void 0, funct
 }));
 app.post('/fetch-loan-data', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { ref, contractAddress, rpcUrl } = req.body;
+        const { ref, contractAddress, rpcUrl, chain } = req.body;
         console.log("fetch loan data refNo: " + " " + ref);
-        const response = yield (0, eth_lending_1.getLoanData)(ref, rpcUrl, contractAddress);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.getLoanDataTron)(ref, contractAddress);
+        else
+            response = yield (0, eth_lending_1.getLoanData)(ref, rpcUrl, contractAddress);
         res.json(response);
     }
     catch (error) {
