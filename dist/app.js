@@ -36,6 +36,7 @@ const eth_access_control_client_1 = require("./eth-access-control-client");
 const eth_lending_1 = require("./eth-lending");
 const eth_escrow_vault_1 = require("./eth-escrow-vault");
 const eth_wallet_2 = require("./eth-wallet");
+const eth_lending_arc_1 = require("./eth-lending-arc");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -590,6 +591,8 @@ app.post('/deposit-into-lend-vault', (req, res) => __awaiter(void 0, void 0, voi
         let response;
         if (chain == 'TRON')
             response = yield (0, tron_bfp_vault_lend_1.depositToVault)(key, tokenToBorrow, amount);
+        else if (chain == 'ARC')
+            response = yield (0, eth_lending_arc_1.arcDepositIntoVault)(key, amount, rpcUrl, contractAddress, tokenToBorrow);
         else
             response = yield (0, eth_lending_1.ethDepositIntoVault)(key, amount, rpcUrl, contractAddress, tokenToBorrow);
         //console.log(response);
@@ -806,6 +809,22 @@ app.post('/fetch-loan-data', (req, res) => __awaiter(void 0, void 0, void 0, fun
     }
     catch (error) {
         console.log(`Error: fetch loan data ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/loan-dashboard-view', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { ref, contractAddress, rpcUrl, chain } = req.body;
+        console.log("fetch loan-dashboard-view: " + " " + ref);
+        let response;
+        if (chain == 'TRON')
+            response = yield (0, tron_bfp_vault_lend_1.getLoanDataTron)(ref, contractAddress);
+        else
+            response = yield (0, eth_lending_1.getDashboardView)(rpcUrl, contractAddress);
+        res.json(response);
+    }
+    catch (error) {
+        console.log(`Error: loan-dashboard-view ` + error.message);
         res.status(500).json({ success: false, message: error.message });
     }
 }));

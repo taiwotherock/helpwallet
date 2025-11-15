@@ -26,13 +26,17 @@ import { depositToVault,withdrawVault,whitelistOrBlackVaultUser,
 import {internalTransfer,ethTranStatus} from './eth-swap'
 import {addAdmin,removeAdmin,checkIsAdmin} from './eth-access-control-client'
 import {ethCreateLoan,ethDepositIntoVault,ethRepayLoan,ethDisburseLoanToMerchant,
-  ethWithdrawFromVault,updateWhiteOrBlackListLend,ethPostRates,getLoanData} from './eth-lending'
+  ethWithdrawFromVault,updateWhiteOrBlackListLend,ethPostRates,getLoanData,getDashboardView} from './eth-lending'
 
 import { createOffer,releaseOffer,markOfferPaid,
   getVaultTokenBalance,getWalletBalance,
   pickOffer,updateWhiteOrBlackList,fetchOfferStatus } from './eth-escrow-vault'
 
   import {ethGasBalanceByKey} from './eth-wallet'
+
+  import {arcDepositIntoVault} from './eth-lending-arc'
+
+  
   
 
 
@@ -750,6 +754,8 @@ app.post('/create-wallet', async (req, res) => {
       
       if(chain == 'TRON')
         response = await depositToVault(key,tokenToBorrow,amount);
+      else if(chain == 'ARC')
+        response = await arcDepositIntoVault(key,amount,rpcUrl,contractAddress,tokenToBorrow);
       else
          response = await ethDepositIntoVault(key,amount,rpcUrl,contractAddress,tokenToBorrow);
       
@@ -1033,6 +1039,27 @@ app.post('/create-wallet', async (req, res) => {
  
     } catch (error) {
       console.log(`Error: fetch loan data ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/loan-dashboard-view', async (req, res) => {
+    try {
+  
+     
+      const { ref, contractAddress,rpcUrl,chain} = req.body;
+      console.log("fetch loan-dashboard-view: "  + " " + ref);
+
+      let response : any;
+      if(chain == 'TRON')
+        response = await getLoanDataTron(ref,contractAddress);
+      else
+        response = await getDashboardView(rpcUrl,contractAddress);
+     
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: loan-dashboard-view ` + error.message)
       res.status(500).json({success:false, message: error.message})
     }
   })
