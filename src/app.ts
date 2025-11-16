@@ -34,10 +34,9 @@ import { createOffer,releaseOffer,markOfferPaid,
 
   import {ethGasBalanceByKey} from './eth-wallet'
 
-  import {arcDepositIntoVault} from './eth-lending-arc'
+  import {arcDepositIntoVault,arcPostRates,arcWithdrawFromVault,arcCreateLoan,arcDisburseLoanToMerchant,arcRepayLoan,getShareWorth} from './eth-lending-arc'
 
-  
-  
+  import {ethSetPoolAndAttestor,setBorrowerAttestation,getBorrowerAttestation} from './eth-attestation-oracle'
 
 
 
@@ -487,24 +486,7 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
-  app.post('/issue-bsc-nft', async (req, res) => {
-    try {
   
-     
-      const { key, borrowerAddress, creditScore, creditLimit, creditOfficer,creditManager} = req.body;
-      console.log("issue neft: "  + " " + borrowerAddress);
-    
-      const response = await issueNftCreditScore(key,borrowerAddress,
-        creditScore,creditLimit,creditOfficer,creditManager);
-      //console.log(response);
-      res.json(response)
-    
-      //res.json(successResponse(response))
-    } catch (error) {
-      console.log(`Error creating wallet `)
-      res.status(500).json({success:false,error:'error creating wallet ' + error})
-    }
-  })
 
     app.post('/update-bsc-nft', async (req, res) => {
     try {
@@ -601,6 +583,8 @@ app.post('/create-wallet', async (req, res) => {
       let response : any;
       if(chain == 'TRON')
         response = await createLoan(key,tokenToBorrow,ref,merchantAddress,amount,fee,depositAmount,borrower);
+      else if(chain == 'ARC')
+        response = await arcCreateLoan(key,amount,rpcUrl,contractAddress,tokenToBorrow,ref,merchantAddress,fee,depositAmount,borrower);
       else
         response = await ethCreateLoan(key,amount,rpcUrl,contractAddress,tokenToBorrow,ref,merchantAddress,fee,depositAmount,borrower);
       
@@ -689,6 +673,8 @@ app.post('/create-wallet', async (req, res) => {
       let response : any;
       if(chain == 'TRON')
          response = await repayLoan(key,ref,amount);
+      else if(chain == 'ARC')
+          response = await arcRepayLoan(key,amount,rpcUrl,contractAddress,tokenToBorrow,ref);
       else 
          response = await ethRepayLoan(key,amount,rpcUrl,contractAddress,tokenToBorrow,ref);
       
@@ -787,6 +773,8 @@ app.post('/create-wallet', async (req, res) => {
       let response : any;
       if(chain == 'TRON')
         response = await withdrawVault(key,tokenToBorrow,amount);
+      else if(chain == 'ARC')
+        response = await arcWithdrawFromVault(key,amount,rpcUrl,contractAddress,tokenToBorrow);
       else 
         response = await ethWithdrawFromVault(key,amount,rpcUrl,contractAddress,tokenToBorrow);
           
@@ -845,6 +833,8 @@ app.post('/create-wallet', async (req, res) => {
       
       if(chain == 'TRON')
         response = await setFeeAndRates(key,platformFee,lenderFee,depositPercent);
+      else if(chain == 'ARC')
+         response = await arcPostRates(key,rpcUrl,contractAddress,lenderFee,platformFee,depositPercent,defaultRate);
       else 
         response = await ethPostRates(key,rpcUrl,contractAddress,lenderFee,platformFee,depositPercent,defaultRate);
 
@@ -873,6 +863,8 @@ app.post('/create-wallet', async (req, res) => {
       let response: any;
       if(chain == 'TRON')
         response = await merchantWithdrawFund(key,tokenToBorrow);
+      else if(chain == 'ARC')
+        response = await arcDisburseLoanToMerchant(key,rpcUrl,contractAddress,tokenToBorrow);
       else 
         response = await ethDisburseLoanToMerchant(key,rpcUrl,contractAddress,tokenToBorrow);
 
@@ -1061,6 +1053,90 @@ app.post('/create-wallet', async (req, res) => {
     } catch (error) {
       console.log(`Error: loan-dashboard-view ` + error.message)
       res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/setup-attestor', async (req, res) => {
+    try {
+  
+     
+      const { key, contractAttestAddress,rpcUrl,chain,attestorAddress,bnplPoolAddress} = req.body;
+      console.log("setup-attestor: "  + " " + contractAttestAddress);
+
+      let response : any;
+      if(chain == 'TRON')
+      {
+
+      }
+      else if(chain == 'ARC') {
+        response = await ethSetPoolAndAttestor(key,bnplPoolAddress,rpcUrl,contractAttestAddress,attestorAddress);
+      }
+     
+      res.json(response)
+ 
+    } catch (error) {
+      console.log(`Error: setup-attestor ` + error.message)
+      res.status(500).json({success:false, message: error.message})
+    }
+  })
+
+  app.post('/borrower-attestation', async (req, res) => {
+    try {
+  
+      const { key, rpcUrl, chain, contractAddress, borrowerAddress, creditScore, creditLimit, kycVerified} = req.body;
+      console.log("issue neft: "  + " " + borrowerAddress);
+    
+      let response : any;
+      if(chain == 'ARC')
+        response = await setBorrowerAttestation(key,borrowerAddress,creditLimit,creditScore,kycVerified,rpcUrl,contractAddress);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error borrower attestation `)
+      res.status(500).json({success:false,error:'error attestation borrower ' + error})
+    }
+  })
+
+  app.post('/fetch-borrower-attestation', async (req, res) => {
+    try {
+  
+      const {  rpcUrl, chain, contractAddress, borrowerAddress} = req.body;
+      console.log("fetch-borrower-attestation: "  + " " + borrowerAddress);
+    
+      let response : any;
+      if(chain == 'ARC')
+        response = await getBorrowerAttestation(borrowerAddress,rpcUrl,contractAddress);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error fetch-borrower-attestation `)
+      res.status(500).json({success:false,error:'error fetch-borrower-attestation ' + error})
+    }
+  })
+
+  app.post('/share-worth', async (req, res) => {
+    try {
+  
+      const {  rpcUrl, chain, contractAddress, address,amount} = req.body;
+      console.log("share-worth: "  + " " + amount);
+    
+      let response : any;
+      if(chain == 'ARC')
+        response = await getShareWorth(rpcUrl,contractAddress,amount);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error share-worth `)
+      res.status(500).json({success:false,error:'error share-worth ' + error})
     }
   })
 

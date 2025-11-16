@@ -52,17 +52,26 @@ export async function ethSetPoolAndAttestor(key: string,
 
     console.log("Public address:", publicAddress);
 
+    //await contract.addTrustedAttestor(ethers.getAddress(publicAddress));
+    //await contract.addTrustedAttestor(ethers.getAddress(attestorAddress));
+
     const tx = await contract.setAllowedPool(ethers.getAddress(poolAddress),true);
     console.log(`🚀 Transaction sent: ${tx.hash}`);
     const receipt = await tx.wait();
     console.log(`✅ Mined in block ${receipt.blockNumber}`);
+
+    await sleep(5000); 
 
     await contract.addTrustedAttestor(ethers.getAddress(attestorAddress));
 
     return {success: true, message: 'PENDING', txId: tx.hash  };
 }
 
-// ====== Main: Withdraw into vault ======
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
 export async function setBorrowerAttestation(key: string,
   borrower: string,
   creditLimit: string,
@@ -79,10 +88,11 @@ export async function setBorrowerAttestation(key: string,
     const publicAddress = await wallet.getAddress();
 
     console.log("Public address:", publicAddress);
+    const creditLimitInt = ethers.parseUnits(creditLimit, 6);
 
      console.log('processing...')
      
-     const tx = await contract.setAttestation( borrower,  creditLimit,  creditScore,  kycVerified);
+     const tx = await contract.setAttestation( borrower,  creditLimitInt,  creditScore,  kycVerified);
        
     console.log(`🚀 Transaction sent: ${tx.hash}`);
     const receipt = await tx.wait();
@@ -92,7 +102,7 @@ export async function setBorrowerAttestation(key: string,
 
   type attestationData = [bigint, bigint, boolean,bigint, string, bigint];
 
-export async function getDashboardView(borrower:string, rpcUrl: string, contractAddress: string) {
+export async function getBorrowerAttestation(borrower:string, rpcUrl: string, contractAddress: string) {
     
     
     const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -108,10 +118,10 @@ export async function getDashboardView(borrower:string, rpcUrl: string, contract
 
     // 4️⃣ Format response for readability
     const result ={success: true, message:'SUCCESS',
-       creditLimit: creditLimit.toString(),
+       creditLimit: ethers.formatUnits(creditLimit.toString(),6),
        creditScore: creditScore.toString(),
        kycVerified: kycVerified,
-       utilizedLimit: utilizedLimit.toString(),
+       utilizedLimit: ethers.formatUnits(utilizedLimit.toString(),6),
        attestor: attestor,
        updatedAt: updatedAt.toString()
     };

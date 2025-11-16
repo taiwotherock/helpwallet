@@ -58,6 +58,18 @@ function addAdmin(key, rpcUrl, contractAddress, address, role) {
             console.log(`credit role granted to ${address}`);
             return { success: true, message: 'SUCCESS', txId: tx.hash };
         }
+        else if (role == 'ADMIN') {
+            result = yield contract.isAdmin(address);
+            console.log(result);
+            if (result) {
+                return { success: true, message: "SUCCESS", txId: '' };
+            }
+            const tx = yield contract.addAdmin(address);
+            console.log(`Transaction sent: ${tx.hash}`);
+            yield tx.wait();
+            console.log(`admin role granted to ${address}`);
+            return { success: true, message: 'SUCCESS', txId: tx.hash };
+        }
     });
 }
 /**

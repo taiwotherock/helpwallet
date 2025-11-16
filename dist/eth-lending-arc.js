@@ -13,17 +13,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.arcDepositIntoVault = arcDepositIntoVault;
-exports.ethWithdrawFromVault = ethWithdrawFromVault;
-exports.updateWhiteOrBlackListLend = updateWhiteOrBlackListLend;
-exports.ethCreateLoan = ethCreateLoan;
-exports.ethRepayLoan = ethRepayLoan;
-exports.ethDisburseLoanToMerchant = ethDisburseLoanToMerchant;
-exports.ethPostRates = ethPostRates;
+exports.arcWithdrawFromVault = arcWithdrawFromVault;
+exports.arcUpdateWhiteOrBlackListLend = arcUpdateWhiteOrBlackListLend;
+exports.arcCreateLoan = arcCreateLoan;
+exports.arcRepayLoan = arcRepayLoan;
+exports.arcDisburseLoanToMerchant = arcDisburseLoanToMerchant;
+exports.arcPostRates = arcPostRates;
 exports.getProtocolStats = getProtocolStats;
 exports.getBorrowerStats = getBorrowerStats;
 exports.getLenderStats = getLenderStats;
 exports.getLoanData = getLoanData;
 exports.getDashboardView = getDashboardView;
+exports.getShareWorth = getShareWorth;
 const ethers_1 = require("ethers");
 const ethers_2 = require("ethers");
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -34,7 +35,7 @@ const PRIVATE_KEY = process.env.B_KEY; // Admin wallet private key Seller's priv
 const CONTRACT_ADDRESS = ethers_1.ethers.getAddress(process.env.ESCROW_VAULT_CONTRACT_ADDRESS); // Deployed TradeEscrowVault contract
 // ====== ABI (minimal) ======
 const ABI = [
-    "function deposit() external payable  returns (uint256 sharesMinted)",
+    "function deposit(uint256 amount) external returns (uint256 sharesMinted)",
     "function withdraw(uint256 sharesToBurn) external",
     "function setWhitelist(address user, bool status) external",
     "function repayLoan(bytes32 ref, uint256 amount) external",
@@ -45,6 +46,8 @@ const ABI = [
     "function writeOffLoan(bytes32 ref) external",
     "function getMerchantFund(address merchant) external",
     "function withdrawPlatformFees(uint256 amount) external",
+    "function getShareWorth(uint256 share) external view returns (uint256 amount)",
+    "function fetchRateSettings() external view returns ( uint256 lenderFeeRate, uint256 platformFeeRate,uint256 depositContributionRate, uint256 defaultBaseRate)",
     "function createLoan(bytes32 ref,address merchant, uint256 principal,uint256 fee, uint256 depositAmount, address borrower, uint256 maturitySeconds) external",
     //"function createLoan(bytes32 ref,address token, address merchant, uint256 principal,uint256 fee, uint256 depositAmount, address borrower, uint256 maturitySeconds) external ",
     "function getLoanData(bytes32 ref) external view returns (address borrower, address token, uint256 principal, uint256 outstanding, uint256 totalPaid,uint256 maturityDate,string memory status)",
@@ -96,19 +99,18 @@ function arcDepositIntoVault(key, amount, rpcUrl, contractAddress, tokenAddress)
         ]);
     
         console.log("decimals allowance " + allowance + " " + decimals2);*/
-        /*
-        const approveTx = await usdtContract.approve(contractAddress, amountInt); /*, {
+        const approveTx = yield usdtContract.approve(contractAddress, amountInt); /*, {
           maxFeePerGas: ethers.parseUnits('100', 'gwei'),          // increase from your last
           maxPriorityFeePerGas: ethers.parseUnits('30', 'gwei'),
         });*/
-        //const tx3 = await approveTx.wait();
-        //console.log(tx3);
+        const tx3 = yield approveTx.wait();
+        console.log(tx3);
         console.log("USDT approved to spend USDT ");
         console.log('contract address: ' + contractAddress);
         // Send transaction
         //function depositToVault(address token, uint256 amount) external
         console.log('processing...' + amountInt);
-        const tx = yield contract.deposit({ value: amountInt, }); /*, {
+        const tx = yield contract.deposit(amountInt); /*, {
           maxFeePerGas: ethers.parseUnits('40', 'gwei'),          // increase from your last
           maxPriorityFeePerGas: ethers.parseUnits('3', 'gwei'),
         });*/
@@ -135,7 +137,7 @@ function arcDepositIntoVault(key, amount, rpcUrl, contractAddress, tokenAddress)
     });
 }
 // ====== Main: Withdraw into vault ======
-function ethWithdrawFromVault(key, amount, rpcUrl, contractAddress, tokenAddress) {
+function arcWithdrawFromVault(key, amount, rpcUrl, contractAddress, tokenAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
         const wallet = new ethers_1.ethers.Wallet(key, provider);
@@ -148,9 +150,9 @@ function ethWithdrawFromVault(key, amount, rpcUrl, contractAddress, tokenAddress
         const balancev = yield vaultContract.balanceOf(contractAddress);
         const decimalNo = yield vaultContract.decimals();
         console.log('decimalNo ' + decimalNo);
-        const vaultBal = ethers_1.ethers.parseUnits(balancev.toString(), decimalNo);
+        const vaultBal = ethers_1.ethers.formatUnits(balancev.toString(), decimalNo);
         console.log(' vault bal ' + vaultBal);
-        if (vaultBal < Number(amount)) {
+        if (Number(vaultBal) < Number(amount)) {
             return { success: false, message: 'Insufficient balance in vault ' + vaultBal, txId: '' };
         }
         const amountInt = ethers_1.ethers.parseUnits(amount, decimalNo); // scaled to 1e18
@@ -159,18 +161,18 @@ function ethWithdrawFromVault(key, amount, rpcUrl, contractAddress, tokenAddress
         const tokenContract = new ethers_1.ethers.Contract(tokenAddress, ERC20_ABI, provider);
         const balance = yield tokenContract.balanceOf(publicAddress);
         const decimals = yield tokenContract.decimals();
-        const userBal = ethers_1.ethers.parseUnits(balance.toString(), decimals);
+        const userBal = ethers_1.ethers.formatUnits(balance.toString(), decimals);
         console.log(' user bal ' + userBal);
         console.log('contract address: ' + contractAddress);
         // Send transaction
         console.log('processing...');
-        const tx = yield contract.withdraw(tokenAddress, amountInt);
+        const tx = yield contract.withdraw(amountInt);
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
         const userBalance2 = yield tokenContract.balanceOf(publicAddress);
         console.log("USDT user balance 2 " + userBalance2);
-        console.log("USDT user balance 2 " + ethers_1.ethers.parseUnits(userBalance2.toString(), 18));
+        console.log("USDT user balance 2 " + ethers_1.ethers.formatUnits(userBalance2.toString(), 18));
         console.log("USDT user balance 1 " + userBalance2);
         if (userBalance2 > balance) {
             console.log('user balance increase');
@@ -186,7 +188,7 @@ function ethWithdrawFromVault(key, amount, rpcUrl, contractAddress, tokenAddress
         return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
-function updateWhiteOrBlackListLend(key, address, status, whiteOrBlack, rpcUrl, contractAddress) {
+function arcUpdateWhiteOrBlackListLend(key, address, status, whiteOrBlack, rpcUrl, contractAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         // Send transaction
         const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
@@ -212,7 +214,7 @@ function updateWhiteOrBlackListLend(key, address, status, whiteOrBlack, rpcUrl, 
 }
 // ====== Main: Deposit into vault ======
 //"function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)",
-function ethCreateLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx, merchantAddress, fee, depositAmount, borrower) {
+function arcCreateLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx, merchantAddress, fee, depositAmount, borrower) {
     return __awaiter(this, void 0, void 0, function* () {
         // Generate unique reference
         const ref = (0, ethers_2.keccak256)((0, ethers_2.toUtf8Bytes)(refx));
@@ -260,7 +262,7 @@ function ethCreateLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx,
         console.log('processing...' + tokenContractAddress);
         console.log('processing...' + maturityDate);
         //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
-        const tx = yield contract.createLoan(ref, tokenContractAddress, ethers_1.ethers.getAddress(merchantAddress), amountInt, feeInt, depositAmt, borrower, maturityDate);
+        const tx = yield contract.createLoan(ref, ethers_1.ethers.getAddress(merchantAddress), amountInt, feeInt, depositAmt, borrower, maturityDate);
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
@@ -279,7 +281,7 @@ function ethCreateLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx,
         return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
-function ethRepayLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx) {
+function arcRepayLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx) {
     return __awaiter(this, void 0, void 0, function* () {
         // Generate unique reference
         const ref = (0, ethers_2.keccak256)((0, ethers_2.toUtf8Bytes)(refx));
@@ -335,7 +337,7 @@ function ethRepayLoan(key, amount, rpcUrl, contractAddress, tokenAddress, refx) 
     });
 }
 //function disburseLoanToMerchant(bytes32 ref) external onlyCreditOfficer
-function ethDisburseLoanToMerchant(key, rpcUrl, contractAddress, tokenAddress) {
+function arcDisburseLoanToMerchant(key, rpcUrl, contractAddress, tokenAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         // Generate unique reference
         console.log('rpc ' + rpcUrl);
@@ -360,10 +362,10 @@ function ethDisburseLoanToMerchant(key, rpcUrl, contractAddress, tokenAddress) {
         const nonce = yield wallet.getNonce();
         // const response = await contract.getMerchantFund(publicAddress,tokenAddress, {nonce});
         //  console.log(response);
-        const tx = yield contract.withdrawMerchantFund(tokenAddress, { nonce: nonce,
-            maxFeePerGas: ethers_1.ethers.parseUnits('40', 'gwei'), // increase from your last
-            maxPriorityFeePerGas: ethers_1.ethers.parseUnits('3', 'gwei')
-        });
+        const tx = yield contract.withdrawMerchantFund(); /* {nonce: nonce,
+          maxFeePerGas: ethers.parseUnits('40', 'gwei'),          // increase from your last
+          maxPriorityFeePerGas: ethers.parseUnits('3', 'gwei')
+        });*/
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
@@ -372,7 +374,7 @@ function ethDisburseLoanToMerchant(key, rpcUrl, contractAddress, tokenAddress) {
         return { success: true, message: 'PENDING', txId: tx.hash };
     });
 }
-function ethPostRates(key, rpcUrl, contractAddress, lenderFee, platformFee, defaultRate, depositContribution) {
+function arcPostRates(key, rpcUrl, contractAddress, lenderFee, platformFee, defaultRate, depositContribution) {
     return __awaiter(this, void 0, void 0, function* () {
         // Generate unique reference
         const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
@@ -397,12 +399,12 @@ function ethPostRates(key, rpcUrl, contractAddress, lenderFee, platformFee, defa
         let tx;
         //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
         //function repayLoan(bytes32 ref, uint256 amount) external
-        tx = yield contract.setFeeRate(platformFeeInt, lenderFeeInt, defaultRateInt, {
-            maxFeePerGas: ethers_1.ethers.parseUnits('50', 'gwei'), // must be > previous tx
-            maxPriorityFeePerGas: ethers_1.ethers.parseUnits('10', 'gwei'),
-        });
+        tx = yield contract.setFeeRate(platformFeeInt, lenderFeeInt, defaultRateInt); /*,  {
+          maxFeePerGas: ethers.parseUnits('50', 'gwei'), // must be > previous tx
+          maxPriorityFeePerGas: ethers.parseUnits('10', 'gwei'),
+        });*/
         const tx2 = yield contract.setDepositContributionPercent(depositAmtInt);
-        console.log(`🚀 Transaction sent: ${tx.hash}     ${tx2.hash}`);
+        console.log(`🚀 Transaction sent: ${tx.hash}  `);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);
         return { success: true, message: 'PENDING', txId: tx.hash };
@@ -530,6 +532,21 @@ function getDashboardView(rpcUrl, contractAddress) {
             totalLenderFees: ethers_1.ethers.formatUnits(totalLenderFees.toString(), 6),
             totalPastDue: ethers_1.ethers.formatUnits(totalPastDue.toString(), 6)
         };
+        console.log("📦 loan data :", result);
+        return result;
+    });
+}
+function getShareWorth(rpcUrl, contractAddress, amount) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
+        const vault = new ethers_1.ethers.Contract(contractAddress, ABI, provider);
+        const amountInt = ethers_1.ethers.parseUnits(amount, 6);
+        console.log('amount: ' + amountInt);
+        // 3️⃣ Call the view function
+        const response = yield vault.getShareWorth(amountInt);
+        console.log(response);
+        // 4️⃣ Format response for readability
+        const result = { success: true, message: 'SUCCESS' };
         console.log("📦 loan data :", result);
         return result;
     });

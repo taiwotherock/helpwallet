@@ -159,7 +159,7 @@ function ethWithdrawFromVault(key, amount, rpcUrl, contractAddress, tokenAddress
         console.log('contract address: ' + contractAddress);
         // Send transaction
         console.log('processing...');
-        const tx = yield contract.withdraw(tokenAddress, amountInt);
+        const tx = yield contract.withdraw(amountInt);
         console.log(`🚀 Transaction sent: ${tx.hash}`);
         const receipt = yield tx.wait();
         console.log(`✅ Mined in block ${receipt.blockNumber}`);

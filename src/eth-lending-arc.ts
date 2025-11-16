@@ -13,7 +13,7 @@ const CONTRACT_ADDRESS = ethers.getAddress(process.env.ESCROW_VAULT_CONTRACT_ADD
 // ====== ABI (minimal) ======
 const ABI = [
 
-  "function deposit() external payable  returns (uint256 sharesMinted)",
+  "function deposit(uint256 amount) external returns (uint256 sharesMinted)",
   "function withdraw(uint256 sharesToBurn) external",
   "function setWhitelist(address user, bool status) external",
   "function repayLoan(bytes32 ref, uint256 amount) external",
@@ -24,6 +24,8 @@ const ABI = [
   "function writeOffLoan(bytes32 ref) external",
   "function getMerchantFund(address merchant) external",
   "function withdrawPlatformFees(uint256 amount) external",
+  "function getShareWorth(uint256 share) external view returns (uint256 amount)",
+  "function fetchRateSettings() external view returns ( uint256 lenderFeeRate, uint256 platformFeeRate,uint256 depositContributionRate, uint256 defaultBaseRate)",
   "function createLoan(bytes32 ref,address merchant, uint256 principal,uint256 fee, uint256 depositAmount, address borrower, uint256 maturitySeconds) external",
   //"function createLoan(bytes32 ref,address token, address merchant, uint256 principal,uint256 fee, uint256 depositAmount, address borrower, uint256 maturitySeconds) external ",
   "function getLoanData(bytes32 ref) external view returns (address borrower, address token, uint256 principal, uint256 outstanding, uint256 totalPaid,uint256 maturityDate,string memory status)",
@@ -102,13 +104,13 @@ export async function arcDepositIntoVault(key: string,
 
     console.log("decimals allowance " + allowance + " " + decimals2);*/
 
-    /*
+    
     const approveTx = await usdtContract.approve(contractAddress, amountInt); /*, {
       maxFeePerGas: ethers.parseUnits('100', 'gwei'),          // increase from your last
       maxPriorityFeePerGas: ethers.parseUnits('30', 'gwei'),
     });*/
-    //const tx3 = await approveTx.wait();
-    //console.log(tx3);
+    const tx3 = await approveTx.wait();
+    console.log(tx3);
     console.log("USDT approved to spend USDT ");
 
     console.log('contract address: ' + contractAddress)
@@ -116,7 +118,7 @@ export async function arcDepositIntoVault(key: string,
     // Send transaction
     //function depositToVault(address token, uint256 amount) external
     console.log('processing...' + amountInt)
-    const tx = await contract.deposit({value: amountInt,}) /*, {
+    const tx = await contract.deposit(amountInt) /*, {
       maxFeePerGas: ethers.parseUnits('40', 'gwei'),          // increase from your last
       maxPriorityFeePerGas: ethers.parseUnits('3', 'gwei'),
     });*/
@@ -176,9 +178,9 @@ export async function arcWithdrawFromVault(key: string,
     const balancev: bigint = await vaultContract.balanceOf(contractAddress);
     const decimalNo = await vaultContract.decimals();
     console.log('decimalNo ' + decimalNo);
-    const vaultBal =  ethers.parseUnits(balancev.toString(), decimalNo);
+    const vaultBal =  ethers.formatUnits(balancev.toString(), decimalNo);
     console.log(' vault bal ' + vaultBal);
-    if(vaultBal < Number(amount))
+    if(Number(vaultBal) < Number(amount))
     {
         return {success: false, message: 'Insufficient balance in vault ' + vaultBal, txId: ''  };
     }
@@ -190,7 +192,7 @@ export async function arcWithdrawFromVault(key: string,
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
     const balance: bigint = await tokenContract.balanceOf(publicAddress);
     const decimals: number = await tokenContract.decimals();
-    const userBal =  ethers.parseUnits(balance.toString(), decimals);
+    const userBal =  ethers.formatUnits(balance.toString(), decimals);
     console.log(' user bal ' + userBal);
     console.log('contract address: ' + contractAddress)
     
@@ -206,7 +208,7 @@ export async function arcWithdrawFromVault(key: string,
 
     const userBalance2 = await tokenContract.balanceOf(publicAddress);
     console.log("USDT user balance 2 " + userBalance2);
-    console.log("USDT user balance 2 " + ethers.parseUnits(userBalance2.toString(), 18));
+    console.log("USDT user balance 2 " + ethers.formatUnits(userBalance2.toString(), 18));
     console.log("USDT user balance 1 " + userBalance2);
     if(userBalance2 > balance)
     {
@@ -362,7 +364,7 @@ export async function arcCreateLoan(key: string,
 }
 
 
-export async function ethRepayLoan(key: string,
+export async function arcRepayLoan(key: string,
   amount: string,
   rpcUrl: string,
   contractAddress: string,
@@ -496,7 +498,7 @@ export async function arcDisburseLoanToMerchant(key: string,
     return {success: true, message: 'PENDING', txId: tx.hash  };
 }
 
-export async function ethPostRates(key: string,
+export async function arcPostRates(key: string,
   rpcUrl: string,
   contractAddress: string,
   lenderFee: string,
@@ -536,15 +538,14 @@ export async function ethPostRates(key: string,
       let tx : any;
       //function createLoan(bytes32 ref,address token, address merchant, uint256 principal, uint256 fee)
     //function repayLoan(bytes32 ref, uint256 amount) external
-      tx = await contract.setFeeRate(platformFeeInt,lenderFeeInt, defaultRateInt,  {
+      tx = await contract.setFeeRate(platformFeeInt,lenderFeeInt, defaultRateInt); /*,  {
         maxFeePerGas: ethers.parseUnits('50', 'gwei'), // must be > previous tx
         maxPriorityFeePerGas: ethers.parseUnits('10', 'gwei'),
-      });
+      });*/
 
       const tx2 = await contract.setDepositContributionPercent(depositAmtInt);
       
-       
-    console.log(`🚀 Transaction sent: ${tx.hash}     ${tx2.hash}` );
+           console.log(`🚀 Transaction sent: ${tx.hash}  ` );
     const receipt = await tx.wait();
     console.log(`✅ Mined in block ${receipt.blockNumber}`);
  
@@ -708,6 +709,26 @@ export async function getDashboardView( rpcUrl: string, contractAddress: string)
     };
 
     console.log("📦 loan data :", result);
+    return result;
+}
+
+export async function getShareWorth( rpcUrl: string, contractAddress: string, amount:string) {
+    
+    
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+       
+    const vault = new ethers.Contract(contractAddress, ABI, provider);
+    const amountInt = ethers.parseUnits(amount, 6);
+    console.log('amount: ' + amountInt);
+
+    // 3️⃣ Call the view function
+    const response = await vault.getShareWorth(amountInt);
+    console.log(response);
+    
+
+    // 4️⃣ Format response for readability
+    const result ={success: true, message:'SUCCESS'};
+       console.log("📦 loan data :", result);
     return result;
 }
 

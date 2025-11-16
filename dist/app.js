@@ -37,6 +37,7 @@ const eth_lending_1 = require("./eth-lending");
 const eth_escrow_vault_1 = require("./eth-escrow-vault");
 const eth_wallet_2 = require("./eth-wallet");
 const eth_lending_arc_1 = require("./eth-lending-arc");
+const eth_attestation_oracle_1 = require("./eth-attestation-oracle");
 dotenv_1.default.config();
 const PORT = process.env._PORT;
 //const API_KEY = process.env.API_KEY
@@ -390,20 +391,6 @@ app.post('/swap', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.status(500).json({ success: false, error: 'error creating wallet ' + error });
     }
 }));
-app.post('/issue-bsc-nft', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const { key, borrowerAddress, creditScore, creditLimit, creditOfficer, creditManager } = req.body;
-        console.log("issue neft: " + " " + borrowerAddress);
-        const response = yield (0, tron_bcs_nft_1.issueNftCreditScore)(key, borrowerAddress, creditScore, creditLimit, creditOfficer, creditManager);
-        //console.log(response);
-        res.json(response);
-        //res.json(successResponse(response))
-    }
-    catch (error) {
-        console.log(`Error creating wallet `);
-        res.status(500).json({ success: false, error: 'error creating wallet ' + error });
-    }
-}));
 app.post('/update-bsc-nft', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { key, tokenId, creditScore, creditLimit, creditOfficer } = req.body;
@@ -478,6 +465,8 @@ app.post('/request-loan', (req, res) => __awaiter(void 0, void 0, void 0, functi
         let response;
         if (chain == 'TRON')
             response = yield (0, tron_bfp_vault_lend_1.createLoan)(key, tokenToBorrow, ref, merchantAddress, amount, fee, depositAmount, borrower);
+        else if (chain == 'ARC')
+            response = yield (0, eth_lending_arc_1.arcCreateLoan)(key, amount, rpcUrl, contractAddress, tokenToBorrow, ref, merchantAddress, fee, depositAmount, borrower);
         else
             response = yield (0, eth_lending_1.ethCreateLoan)(key, amount, rpcUrl, contractAddress, tokenToBorrow, ref, merchantAddress, fee, depositAmount, borrower);
         //console.log(response);
@@ -543,6 +532,8 @@ app.post('/repay-loan', (req, res) => __awaiter(void 0, void 0, void 0, function
         let response;
         if (chain == 'TRON')
             response = yield (0, tron_bfp_vault_lend_1.repayLoan)(key, ref, amount);
+        else if (chain == 'ARC')
+            response = yield (0, eth_lending_arc_1.arcRepayLoan)(key, amount, rpcUrl, contractAddress, tokenToBorrow, ref);
         else
             response = yield (0, eth_lending_1.ethRepayLoan)(key, amount, rpcUrl, contractAddress, tokenToBorrow, ref);
         console.log(response);
@@ -617,6 +608,8 @@ app.post('/withdraw-from-lend-vault', (req, res) => __awaiter(void 0, void 0, vo
         let response;
         if (chain == 'TRON')
             response = yield (0, tron_bfp_vault_lend_1.withdrawVault)(key, tokenToBorrow, amount);
+        else if (chain == 'ARC')
+            response = yield (0, eth_lending_arc_1.arcWithdrawFromVault)(key, amount, rpcUrl, contractAddress, tokenToBorrow);
         else
             response = yield (0, eth_lending_1.ethWithdrawFromVault)(key, amount, rpcUrl, contractAddress, tokenToBorrow);
         //console.log(response);
@@ -661,6 +654,8 @@ app.post('/post-rates', (req, res) => __awaiter(void 0, void 0, void 0, function
         let response;
         if (chain == 'TRON')
             response = yield (0, tron_bfp_vault_lend_1.setFeeAndRates)(key, platformFee, lenderFee, depositPercent);
+        else if (chain == 'ARC')
+            response = yield (0, eth_lending_arc_1.arcPostRates)(key, rpcUrl, contractAddress, lenderFee, platformFee, depositPercent, defaultRate);
         else
             response = yield (0, eth_lending_1.ethPostRates)(key, rpcUrl, contractAddress, lenderFee, platformFee, depositPercent, defaultRate);
         console.log(response);
@@ -683,6 +678,8 @@ app.post('/merchant-withdraw', (req, res) => __awaiter(void 0, void 0, void 0, f
         let response;
         if (chain == 'TRON')
             response = yield (0, tron_bfp_vault_lend_1.merchantWithdrawFund)(key, tokenToBorrow);
+        else if (chain == 'ARC')
+            response = yield (0, eth_lending_arc_1.arcDisburseLoanToMerchant)(key, rpcUrl, contractAddress, tokenToBorrow);
         else
             response = yield (0, eth_lending_1.ethDisburseLoanToMerchant)(key, rpcUrl, contractAddress, tokenToBorrow);
         console.log(response);
@@ -826,6 +823,71 @@ app.post('/loan-dashboard-view', (req, res) => __awaiter(void 0, void 0, void 0,
     catch (error) {
         console.log(`Error: loan-dashboard-view ` + error.message);
         res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/setup-attestor', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, contractAttestAddress, rpcUrl, chain, attestorAddress, bnplPoolAddress } = req.body;
+        console.log("setup-attestor: " + " " + contractAttestAddress);
+        let response;
+        if (chain == 'TRON') {
+        }
+        else if (chain == 'ARC') {
+            response = yield (0, eth_attestation_oracle_1.ethSetPoolAndAttestor)(key, bnplPoolAddress, rpcUrl, contractAttestAddress, attestorAddress);
+        }
+        res.json(response);
+    }
+    catch (error) {
+        console.log(`Error: setup-attestor ` + error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+app.post('/borrower-attestation', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { key, rpcUrl, chain, contractAddress, borrowerAddress, creditScore, creditLimit, kycVerified } = req.body;
+        console.log("issue neft: " + " " + borrowerAddress);
+        let response;
+        if (chain == 'ARC')
+            response = yield (0, eth_attestation_oracle_1.setBorrowerAttestation)(key, borrowerAddress, creditLimit, creditScore, kycVerified, rpcUrl, contractAddress);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error borrower attestation `);
+        res.status(500).json({ success: false, error: 'error attestation borrower ' + error });
+    }
+}));
+app.post('/fetch-borrower-attestation', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { rpcUrl, chain, contractAddress, borrowerAddress } = req.body;
+        console.log("fetch-borrower-attestation: " + " " + borrowerAddress);
+        let response;
+        if (chain == 'ARC')
+            response = yield (0, eth_attestation_oracle_1.getBorrowerAttestation)(borrowerAddress, rpcUrl, contractAddress);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error fetch-borrower-attestation `);
+        res.status(500).json({ success: false, error: 'error fetch-borrower-attestation ' + error });
+    }
+}));
+app.post('/share-worth', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { rpcUrl, chain, contractAddress, address, amount } = req.body;
+        console.log("share-worth: " + " " + amount);
+        let response;
+        if (chain == 'ARC')
+            response = yield (0, eth_lending_arc_1.getShareWorth)(rpcUrl, contractAddress, amount);
+        //console.log(response);
+        res.json(response);
+        //res.json(successResponse(response))
+    }
+    catch (error) {
+        console.log(`Error share-worth `);
+        res.status(500).json({ success: false, error: 'error share-worth ' + error });
     }
 }));
 app.post('/testoffer', (req, res) => __awaiter(void 0, void 0, void 0, function* () {

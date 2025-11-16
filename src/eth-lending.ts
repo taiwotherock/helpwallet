@@ -188,7 +188,7 @@ export async function ethWithdrawFromVault(key: string,
     // Send transaction
      console.log('processing...')
      
-     const tx = await contract.withdraw(tokenAddress,amountInt);
+     const tx = await contract.withdraw(amountInt);
        
     console.log(`🚀 Transaction sent: ${tx.hash}`);
     const receipt = await tx.wait();
