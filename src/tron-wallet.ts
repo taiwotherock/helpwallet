@@ -38,21 +38,21 @@ export async function createWalletWithPhrase(username: string, entityCode: strin
   
 }
 
-export async function fetchBalance(key: string) {
+export async function fetchBalance(address: string) {
 
        const tronWeb = new TronWeb({
         fullHost: process.env.TRON_NODE_URL,
-        privateKey: key,
+        privateKey: process.env.PRIVATE_KEY_NILE,
       });
 
-      const base58Address = tronWeb.address.fromPrivateKey(key);
-      console.log('Base58 (T...) address:', base58Address);  
+      
+      console.log('Base58 (T...) address:', address);  
 
-       const result = await tronWeb.trx.getBalance(base58Address)
+       const result = await tronWeb.trx.getBalance(address)
        console.log("result: " + result)
        let balance = Number(result)/1000000
 
-     var response = {success:true, balance: balance, symbol: 'TRX', message: base58Address };
+     var response = {success:true, balance: balance, symbol: 'TRX', message: address };
      return response;
     
  }

@@ -50,17 +50,17 @@ export async function addCreditOfficer(creditOfficer: string, privateKey: string
 }
 
 
-export async function isCreditOfficer(creditOfficer: string) {
+export async function isCreditOfficer(key: string, creditOfficer: string, contractAddress: string, rpcUrl: string) {
 
     try {
 
     const tronWeb = new TronWeb({
-        fullHost: process.env.TRON_NODE_URL,
-         privateKey: 'CD6F76549C53F210AF67B6CBFDF1DFB54C07EB659C5DC7E0A66CBF8376FE70BB',
+        fullHost: rpcUrl,
+         privateKey: key,
       });
 
       //const fromAddress1 = tronWeb.defaultAddress.base58;
-      let CONTRACT_ADDRESS = process.env.ACCESS_CONTROL_CONTRACT_ADDRESS
+      let CONTRACT_ADDRESS = contractAddress; //process.env.ACCESS_CONTROL_CONTRACT_ADDRESS
 
       console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS)
       console.log('credit address ' + creditOfficer)

@@ -68,18 +68,17 @@ function createWalletWithPhrase(username, entityCode, name) {
         return response;
     });
 }
-function fetchBalance(key) {
+function fetchBalance(address) {
     return __awaiter(this, void 0, void 0, function* () {
         const tronWeb = new tronweb_1.TronWeb({
             fullHost: process.env.TRON_NODE_URL,
-            privateKey: key,
+            privateKey: process.env.PRIVATE_KEY_NILE,
         });
-        const base58Address = tronWeb.address.fromPrivateKey(key);
-        console.log('Base58 (T...) address:', base58Address);
-        const result = yield tronWeb.trx.getBalance(base58Address);
+        console.log('Base58 (T...) address:', address);
+        const result = yield tronWeb.trx.getBalance(address);
         console.log("result: " + result);
         let balance = Number(result) / 1000000;
-        var response = { success: true, balance: balance, symbol: 'TRX', message: base58Address };
+        var response = { success: true, balance: balance, symbol: 'TRX', message: address };
         return response;
     });
 }

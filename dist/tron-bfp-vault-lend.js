@@ -19,24 +19,25 @@ exports.createLoan = createLoan;
 exports.repayLoan = repayLoan;
 exports.merchantWithdrawFund = merchantWithdrawFund;
 exports.getBorrowerLoanOutstanding = getBorrowerLoanOutstanding;
-exports.setFeeAndRates = setFeeAndRates;
+exports.tronSetFeeAndRates = tronSetFeeAndRates;
+exports.tronGetVaultStats = tronGetVaultStats;
 exports.getLoanDataTron = getLoanDataTron;
 const tronweb_1 = require("tronweb");
 const dotenv_1 = __importDefault(require("dotenv"));
 const fs = require('fs');
 const path = require('path');
 dotenv_1.default.config();
-const bfpArtifact = JSON.parse(fs.readFileSync('./contracts-abi/VaultLendingV3.json', 'utf8'));
+const bfpArtifact = JSON.parse(fs.readFileSync('./contracts-abi/VaultLendingV4.json', 'utf8'));
 const abiusdt = [{ "constant": true, "inputs": [], "name": "name", "outputs": [{ "name": "", "type": "string" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_upgradedAddress", "type": "address" }], "name": "deprecate", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "_spender", "type": "address" }, { "name": "_value", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "deprecated", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_evilUser", "type": "address" }], "name": "addBlackList", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "totalSupply", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_from", "type": "address" }, { "name": "_to", "type": "address" }, { "name": "_value", "type": "uint256" }], "name": "transferFrom", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "upgradedAddress", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "maximumFee", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "_totalSupply", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [], "name": "unpause", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [{ "name": "_maker", "type": "address" }], "name": "getBlackListStatus", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "paused", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_spender", "type": "address" }, { "name": "_subtractedValue", "type": "uint256" }], "name": "decreaseApproval", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [{ "name": "who", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [{ "name": "_value", "type": "uint256" }], "name": "calcFee", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [], "name": "pause", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "owner", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "symbol", "outputs": [{ "name": "", "type": "string" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_to", "type": "address" }, { "name": "_value", "type": "uint256" }], "name": "transfer", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [{ "name": "who", "type": "address" }], "name": "oldBalanceOf", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "newBasisPoints", "type": "uint256" }, { "name": "newMaxFee", "type": "uint256" }], "name": "setParams", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "amount", "type": "uint256" }], "name": "issue", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "_spender", "type": "address" }, { "name": "_addedValue", "type": "uint256" }], "name": "increaseApproval", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "amount", "type": "uint256" }], "name": "redeem", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [{ "name": "_owner", "type": "address" }, { "name": "_spender", "type": "address" }], "name": "allowance", "outputs": [{ "name": "remaining", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "basisPointsRate", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [{ "name": "", "type": "address" }], "name": "isBlackListed", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_clearedUser", "type": "address" }], "name": "removeBlackList", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "MAX_UINT", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "newOwner", "type": "address" }], "name": "transferOwnership", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [{ "name": "_blackListedUser", "type": "address" }], "name": "destroyBlackFunds", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "inputs": [{ "name": "_initialSupply", "type": "uint256" }, { "name": "_name", "type": "string" }, { "name": "_symbol", "type": "string" }, { "name": "_decimals", "type": "uint8" }], "payable": false, "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "_blackListedUser", "type": "address" }, { "indexed": false, "name": "_balance", "type": "uint256" }], "name": "DestroyedBlackFunds", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "amount", "type": "uint256" }], "name": "Issue", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "amount", "type": "uint256" }], "name": "Redeem", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "newAddress", "type": "address" }], "name": "Deprecate", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "_user", "type": "address" }], "name": "AddedBlackList", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "_user", "type": "address" }], "name": "RemovedBlackList", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": false, "name": "feeBasisPoints", "type": "uint256" }, { "indexed": false, "name": "maxFee", "type": "uint256" }], "name": "Params", "type": "event" }, { "anonymous": false, "inputs": [], "name": "Pause", "type": "event" }, { "anonymous": false, "inputs": [], "name": "Unpause", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "previousOwner", "type": "address" }, { "indexed": true, "name": "newOwner", "type": "address" }], "name": "OwnershipTransferred", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "owner", "type": "address" }, { "indexed": true, "name": "spender", "type": "address" }, { "indexed": false, "name": "value", "type": "uint256" }], "name": "Approval", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "from", "type": "address" }, { "indexed": true, "name": "to", "type": "address" }, { "indexed": false, "name": "value", "type": "uint256" }], "name": "Transfer", "type": "event" }];
-function depositToVault(privateKey, tokenAddressToBorrow, requestedAmount) {
+function depositToVault(privateKey, tokenAddressToBorrow, requestedAmount, rpcUrl, contractAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({
-                fullHost: process.env.TRON_NODE_URL,
+                fullHost: rpcUrl,
                 privateKey: privateKey,
             });
             //const fromAddress1 = tronWeb.defaultAddress.base58;
-            let CONTRACT_ADDRESS = process.env.VAULT_LENDING_CONTRACT_ADDRESS;
+            let CONTRACT_ADDRESS = contractAddress;
             console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS);
             const me = tronWeb.defaultAddress.base58;
             console.log('from address ' + me);
@@ -58,10 +59,11 @@ function depositToVault(privateKey, tokenAddressToBorrow, requestedAmount) {
             const contract = yield tronWeb.contract(bfpArtifact.abi, CONTRACT_ADDRESS);
             console.log(Number(requestedAmount) * 1000000);
             // request for loan USDT
-            const tx = yield contract.depositToVault(tokenAddressToBorrow, Number(requestedAmount) * 1000000).send({
+            const tx = yield contract.deposit(amount).send({
                 from: me,
                 feeLimit: 3000000000 // 100 TRX energy fee limit
             });
+            console.log(tx);
             console.log("vault deposit collateral. TxID:", tx);
             return { success: true, txId: tx, message: 'PENDING' };
         }
@@ -71,15 +73,15 @@ function depositToVault(privateKey, tokenAddressToBorrow, requestedAmount) {
         }
     });
 }
-function withdrawVault(privateKey, tokenAddressToBorrow, requestedAmount) {
+function withdrawVault(privateKey, tokenAddressToBorrow, requestedAmount, rpcUrl, contractAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({
-                fullHost: process.env.TRON_NODE_URL,
+                fullHost: rpcUrl,
                 privateKey: privateKey,
             });
             //const fromAddress1 = tronWeb.defaultAddress.base58;
-            let CONTRACT_ADDRESS = process.env.VAULT_LENDING_CONTRACT_ADDRESS;
+            let CONTRACT_ADDRESS = contractAddress;
             console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS);
             const me = tronWeb.defaultAddress.base58;
             console.log('from address ' + me);
@@ -92,7 +94,7 @@ function withdrawVault(privateKey, tokenAddressToBorrow, requestedAmount) {
             const contract = yield tronWeb.contract(bfpArtifact.abi, CONTRACT_ADDRESS);
             console.log(Number(requestedAmount) * 1000000);
             // request for loan USDT
-            const tx = yield contract.withdrawFromVault(tokenAddressToBorrow, Number(requestedAmount) * 1000000).send({
+            const tx = yield contract.withdraw(amount).send({
                 from: me,
                 feeLimit: 3000000000 // 100 TRX energy fee limit
             });
@@ -105,15 +107,15 @@ function withdrawVault(privateKey, tokenAddressToBorrow, requestedAmount) {
         }
     });
 }
-function whitelistOrBlackVaultUser(privateKey, address, status, whiteOrBlack) {
+function whitelistOrBlackVaultUser(privateKey, address, status, whiteOrBlack, rpcUrl, contractAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({
-                fullHost: process.env.TRON_NODE_URL,
+                fullHost: rpcUrl,
                 privateKey: privateKey,
             });
             //const fromAddress1 = tronWeb.defaultAddress.base58;
-            let CONTRACT_ADDRESS = process.env.VAULT_LENDING_CONTRACT_ADDRESS;
+            let CONTRACT_ADDRESS = contractAddress;
             console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS);
             const me = tronWeb.defaultAddress.base58;
             console.log('from address ' + me);
@@ -146,15 +148,15 @@ function whitelistOrBlackVaultUser(privateKey, address, status, whiteOrBlack) {
         }
     });
 }
-function createLoan(privateKey, tokenAddressToBorrow, ref, merchant, principal, fee, depositAmount, borrower) {
+function createLoan(privateKey, tokenAddressToBorrow, ref, merchant, principal, fee, depositAmount, borrower, rpcUrl, contractAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({
-                fullHost: process.env.TRON_NODE_URL,
+                fullHost: rpcUrl,
                 privateKey: privateKey,
             });
             //const fromAddress1 = tronWeb.defaultAddress.base58;
-            let CONTRACT_ADDRESS = process.env.VAULT_LENDING_CONTRACT_ADDRESS;
+            let CONTRACT_ADDRESS = contractAddress; //process.env.VAULT_LENDING_CONTRACT_ADDRESS
             console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS);
             const me = tronWeb.defaultAddress.base58;
             console.log('from address ' + me);
@@ -179,8 +181,12 @@ function createLoan(privateKey, tokenAddressToBorrow, ref, merchant, principal, 
             const depRequired = principalAmt * Number(result) / 1000000;
             console.log('deposit required:: ' + depRequired);
             console.log('dep amt:: ' + depositAmt);
+            const nowMs = Date.now(); // milliseconds since epoch
+            const thirtyDaysSeconds = 30 * 24 * 60 * 60; // 30 days in seconds (strictly 30*24h)
+            const expiryUnixSeconds = Math.floor(nowMs / 1000) + thirtyDaysSeconds;
+            console.log('expiryUnixSeconds: ' + expiryUnixSeconds);
             // request for loan USDT
-            const tx = yield contract.createLoan(ref32, tokenAddressToBorrow, merchant, principalAmt, feeAmt, depositAmt, borrower).send({
+            const tx = yield contract.createLoan(ref32, merchant, principalAmt, feeAmt, depositAmt, borrower, expiryUnixSeconds.toString()).send({
                 from: me,
                 feeLimit: 3000000000 // 100 TRX energy fee limit
             });
@@ -193,15 +199,15 @@ function createLoan(privateKey, tokenAddressToBorrow, ref, merchant, principal, 
         }
     });
 }
-function repayLoan(privateKey, ref, amount) {
+function repayLoan(privateKey, ref, amount, rpcUrl, contractAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({
-                fullHost: process.env.TRON_NODE_URL,
+                fullHost: rpcUrl,
                 privateKey: privateKey,
             });
             //const fromAddress1 = tronWeb.defaultAddress.base58;
-            let CONTRACT_ADDRESS = process.env.VAULT_LENDING_CONTRACT_ADDRESS;
+            let CONTRACT_ADDRESS = contractAddress;
             console.log('CONTRACT_ADDRESS ' + CONTRACT_ADDRESS);
             const me = tronWeb.defaultAddress.base58;
             console.log('from address ' + me);
@@ -212,7 +218,7 @@ function repayLoan(privateKey, ref, amount) {
             // --- Load Loan Vault ---
             const contract = yield tronWeb.contract(bfpArtifact.abi, CONTRACT_ADDRESS);
             // request for loan USDT
-            const tx = yield contract.repayLoan(ref32, amt).send({
+            const tx = yield contract.repayLoan(ref32, amt, me).send({
                 from: me,
                 feeLimit: 3000000000 // 100 TRX energy fee limit
             });
@@ -283,14 +289,14 @@ function getBorrowerLoanOutstanding(borrowerAddr) {
         }
     });
 }
-function setFeeAndRates(key, platformFee, lenderFee, depositPercent) {
+function tronSetFeeAndRates(key, platformFee, lenderFee, depositPercent, rpcUrl, contractAddress) {
     return __awaiter(this, void 0, void 0, function* () {
         const tronWeb = new tronweb_1.TronWeb({
-            fullHost: process.env.TRON_NODE_URL,
+            fullHost: rpcUrl,
             privateKey: key
         });
         try {
-            let CONTRACT_ADDRESS = process.env.VAULT_LENDING_CONTRACT_ADDRESS;
+            let CONTRACT_ADDRESS = contractAddress;
             console.log('contract pool ' + CONTRACT_ADDRESS);
             console.log('user address ' + platformFee);
             const me = tronWeb.defaultAddress.base58;
@@ -298,11 +304,13 @@ function setFeeAndRates(key, platformFee, lenderFee, depositPercent) {
             // --- Load Token Contract ---
             const contract = yield tronWeb.contract(bfpArtifact.abi, CONTRACT_ADDRESS);
             //getLoans(address borrower, uint256 offset, uint256 limit)
-            const amtp = Number(platformFee) * 1000000;
-            const amtl = Number(lenderFee) * 1000000;
-            const depositP = Number(depositPercent) * 1000000;
+            const amtp = Number(platformFee) * 100;
+            const amtl = Number(lenderFee) * 100;
+            const depositP = Number(depositPercent) * 100;
+            console.log('amt ' + amtp + " " + amtl + " " + depositP);
+            console.log("DEBUG:", { amtp, amtl, depositP, me });
             //setFeeRate(uint256 platformFeeRate, uint256 lenderFeeRate)
-            const tx = yield contract.setFeeRate(amtp, amtl).send({
+            const tx = yield contract.setFeeRate(amtp, amtl, 500).send({
                 from: me,
                 feeLimit: 3000000000 // 100 TRX energy fee limit
             });
@@ -319,11 +327,35 @@ function setFeeAndRates(key, platformFee, lenderFee, depositPercent) {
         }
     });
 }
-function getLoanDataTron(ref, contractAddress) {
+function tronGetVaultStats(rpcUrl, contractAddress, amount) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tronWeb = new tronweb_1.TronWeb({
-                fullHost: process.env.TRON_NODE_URL,
+                fullHost: rpcUrl,
+                privateKey: process.env.PRIVATE_KEY_NILE
+            });
+            const fromAddress1 = tronWeb.defaultAddress.base58;
+            //let CONTRACT_ADDRESS = process.env.VAULT_LENDING_CONTRACT_ADDRESS
+            console.log('CONTRACT_ADDRESS ' + contractAddress);
+            console.log('Public address ' + fromAddress1);
+            const amtp = Number(amount) * 1000000;
+            // --- Load Loan Vault ---
+            const contract = yield tronWeb.contract(bfpArtifact.abi, contractAddress);
+            let result = yield contract.getShareWorth(amtp).call();
+            console.log('loan details:: ' + result);
+            return { success: true, txId: '', message: result };
+        }
+        catch (err) {
+            console.log(err);
+            return { success: false, txId: '', message: err.message };
+        }
+    });
+}
+function getLoanDataTron(ref, rpcUrl, contractAddress) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const tronWeb = new tronweb_1.TronWeb({
+                fullHost: rpcUrl,
                 privateKey: process.env.PRIVATE_KEY_NILE
             });
             //const fromAddress1 = tronWeb.defaultAddress.base58;

@@ -20,8 +20,8 @@ import { tranStatus} from './tron-tx-status'
 import { requestLoan,repay,liquidateLoanDue,approveAndDisburseLoan,getBorrowerOutstanding} from './tron-bfp-loanmgr'
 import { depositCollateral,removeCollateral} from './tron-bfp-loanvault'
 import { depositToVault,withdrawVault,whitelistOrBlackVaultUser,
-  merchantWithdrawFund,createLoan,repayLoan,setFeeAndRates,getBorrowerLoanOutstanding
-  ,getLoanDataTron
+  merchantWithdrawFund,createLoan,repayLoan,tronSetFeeAndRates,getBorrowerLoanOutstanding
+  ,getLoanDataTron, tronGetVaultStats
 } from './tron-bfp-vault-lend'
 import {internalTransfer,ethTranStatus} from './eth-swap'
 import {addAdmin,removeAdmin,checkIsAdmin} from './eth-access-control-client'
@@ -37,6 +37,9 @@ import { createOffer,releaseOffer,markOfferPaid,
   import {arcDepositIntoVault,arcPostRates,arcWithdrawFromVault,arcCreateLoan,arcDisburseLoanToMerchant,arcRepayLoan,getShareWorth} from './eth-lending-arc'
 
   import {ethSetPoolAndAttestor,setBorrowerAttestation,getBorrowerAttestation} from './eth-attestation-oracle'
+
+  import {tronSetBorrowerAttestation,tronSetPoolAndAttestor,tronGetBorrowerAttestation} from './tron-attestation-oracle'
+   import {ethOdDepositCollateral,ethSetVaultAdmin} from './eth-overdraft-line'
 
 
 
@@ -153,7 +156,7 @@ app.post('/create-wallet', async (req, res) => {
         return;
       }
 
-      const { walletAddress,tokenAddress,rpcUrl,decimalNo,chain,symbol} = req.body;
+      const { walletAddress,tokenAddress,rpcUrl,decimalNo,chain,symbol,key} = req.body;
       
       console.log('bal22 ' + walletAddress + ' ' + tokenAddress + " " + chain + " " + symbol)
       console.log('rpc: ' + rpcUrl);
@@ -551,7 +554,7 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
-  app.get('/validate-credit-officer/:address', async (req, res) => {
+  app.post('/validate-role', async (req, res) => {
     try {
   
       /*if(!validateToken(req))
@@ -560,8 +563,13 @@ app.post('/create-wallet', async (req, res) => {
         res.status(500).json({success:false,error:'Invalid authentication API key or token '})
         return;
       }*/
+
+      const { key, rpcUrl,contractAddress,symbol,chain,address,role} = req.body;
+      console.log("is credit officer: "  + " " + address + " " );
       
-      const response = await isCreditOfficer(req.params.address);
+      let response: any;
+      if(chain == 'TRON')
+        response = await isCreditOfficer(key,address,contractAddress,rpcUrl);
   
       res.json(response)
     
@@ -582,7 +590,7 @@ app.post('/create-wallet', async (req, res) => {
     
       let response : any;
       if(chain == 'TRON')
-        response = await createLoan(key,tokenToBorrow,ref,merchantAddress,amount,fee,depositAmount,borrower);
+        response = await createLoan(key,tokenToBorrow,ref,merchantAddress,amount,fee,depositAmount,borrower,rpcUrl,contractAddress);
       else if(chain == 'ARC')
         response = await arcCreateLoan(key,amount,rpcUrl,contractAddress,tokenToBorrow,ref,merchantAddress,fee,depositAmount,borrower);
       else
@@ -672,7 +680,7 @@ app.post('/create-wallet', async (req, res) => {
     
       let response : any;
       if(chain == 'TRON')
-         response = await repayLoan(key,ref,amount);
+         response = await repayLoan(key,ref,amount,rpcUrl,contractAddress);
       else if(chain == 'ARC')
           response = await arcRepayLoan(key,amount,rpcUrl,contractAddress,tokenToBorrow,ref);
       else 
@@ -739,7 +747,7 @@ app.post('/create-wallet', async (req, res) => {
       let response : any;
       
       if(chain == 'TRON')
-        response = await depositToVault(key,tokenToBorrow,amount);
+        response = await depositToVault(key,tokenToBorrow,amount,rpcUrl,contractAddress);
       else if(chain == 'ARC')
         response = await arcDepositIntoVault(key,amount,rpcUrl,contractAddress,tokenToBorrow);
       else
@@ -772,7 +780,7 @@ app.post('/create-wallet', async (req, res) => {
     
       let response : any;
       if(chain == 'TRON')
-        response = await withdrawVault(key,tokenToBorrow,amount);
+        response = await withdrawVault(key,tokenToBorrow,amount,rpcUrl,contractAddress);
       else if(chain == 'ARC')
         response = await arcWithdrawFromVault(key,amount,rpcUrl,contractAddress,tokenToBorrow);
       else 
@@ -804,7 +812,7 @@ app.post('/create-wallet', async (req, res) => {
       let response : any;
  
       if(chain == 'TRON')
-        response = await whitelistOrBlackVaultUser(key,address,status,whiteOrBlack);
+        response = await whitelistOrBlackVaultUser(key,address,status,whiteOrBlack,rpcUrl,contractAddress);
       else
         response = await updateWhiteOrBlackListLend(key,address,status,whiteOrBlack,rpcUrl,contractAddress);
 
@@ -832,7 +840,7 @@ app.post('/create-wallet', async (req, res) => {
       let response : any;
       
       if(chain == 'TRON')
-        response = await setFeeAndRates(key,platformFee,lenderFee,depositPercent);
+        response = await tronSetFeeAndRates(key,platformFee,lenderFee,depositPercent,rpcUrl,contractAddress);
       else if(chain == 'ARC')
          response = await arcPostRates(key,rpcUrl,contractAddress,lenderFee,platformFee,depositPercent,defaultRate);
       else 
@@ -1023,7 +1031,7 @@ app.post('/create-wallet', async (req, res) => {
 
       let response : any;
       if(chain == 'TRON')
-        response = await getLoanDataTron(ref,contractAddress);
+        response = await getLoanDataTron(ref,rpcUrl,contractAddress);
       else
         response = await getLoanData(ref,rpcUrl,contractAddress);
      
@@ -1044,7 +1052,7 @@ app.post('/create-wallet', async (req, res) => {
 
       let response : any;
       if(chain == 'TRON')
-        response = await getLoanDataTron(ref,contractAddress);
+        response = await getLoanDataTron(ref,rpcUrl,contractAddress);
       else
         response = await getDashboardView(rpcUrl,contractAddress);
      
@@ -1066,7 +1074,7 @@ app.post('/create-wallet', async (req, res) => {
       let response : any;
       if(chain == 'TRON')
       {
-
+         response = await tronSetPoolAndAttestor(key,bnplPoolAddress,contractAttestAddress,rpcUrl,attestorAddress);
       }
       else if(chain == 'ARC') {
         response = await ethSetPoolAndAttestor(key,bnplPoolAddress,rpcUrl,contractAttestAddress,attestorAddress);
@@ -1087,8 +1095,11 @@ app.post('/create-wallet', async (req, res) => {
       console.log("issue neft: "  + " " + borrowerAddress);
     
       let response : any;
-      if(chain == 'ARC')
-        response = await setBorrowerAttestation(key,borrowerAddress,creditLimit,creditScore,kycVerified,rpcUrl,contractAddress);
+            
+      if(chain == 'TRON')
+        response = await tronSetBorrowerAttestation(key,borrowerAddress,creditLimit,creditScore,kycVerified,rpcUrl,contractAddress);
+      else
+        response = await  setBorrowerAttestation(key,borrowerAddress,creditLimit,creditScore,kycVerified,rpcUrl,contractAddress);
       
       //console.log(response);
       res.json(response)
@@ -1103,12 +1114,14 @@ app.post('/create-wallet', async (req, res) => {
   app.post('/fetch-borrower-attestation', async (req, res) => {
     try {
   
-      const {  rpcUrl, chain, contractAddress, borrowerAddress} = req.body;
+      const {  rpcUrl, chain, contractAddress, borrowerAddress,key} = req.body;
       console.log("fetch-borrower-attestation: "  + " " + borrowerAddress);
     
       let response : any;
       if(chain == 'ARC')
         response = await getBorrowerAttestation(borrowerAddress,rpcUrl,contractAddress);
+      else if(chain == 'TRON')
+        response = await tronGetBorrowerAttestation(borrowerAddress,contractAddress,rpcUrl,key);
       
       //console.log(response);
       res.json(response)
@@ -1129,6 +1142,8 @@ app.post('/create-wallet', async (req, res) => {
       let response : any;
       if(chain == 'ARC')
         response = await getShareWorth(rpcUrl,contractAddress,amount);
+      else if(chain == 'TRON')
+         response = await tronGetVaultStats(rpcUrl,contractAddress,amount);
       
       //console.log(response);
       res.json(response)
@@ -1140,7 +1155,43 @@ app.post('/create-wallet', async (req, res) => {
     }
   })
 
+  app.post('/set-od-vault-officer', async (req, res) => {
+    try {
+  
+      const {  key,rpcUrl, chain, contractAddress, address} = req.body;
+      console.log("set-od-vault-officer: "  + " " );
+    
+      let response : any;
+      response = await ethSetVaultAdmin(key,address,rpcUrl,contractAddress);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error set-od-vault-officer `)
+      res.status(500).json({success:false,error:'error set-od-vault-officer ' + error})
+    }
+  })
 
+  app.post('/post-od-deposit', async (req, res) => {
+    try {
+  
+      const {  key,rpcUrl, chain, contractAddress, amount,tokenAddress} = req.body;
+      console.log("post-od-deposit: "  + " " );
+    
+      let response : any;
+      response = await ethOdDepositCollateral(key,amount, rpcUrl,contractAddress,tokenAddress);
+      
+      //console.log(response);
+      res.json(response)
+    
+      //res.json(successResponse(response))
+    } catch (error) {
+      console.log(`Error post-od-deposit `)
+      res.status(500).json({success:false,error:'error post-od-deposit ' + error})
+    }
+  })
 
    app.post('/testoffer', async (req, res) => {
     try {
